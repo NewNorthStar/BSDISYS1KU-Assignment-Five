@@ -1,0 +1,37 @@
+syntax = "proto3";
+option go_package = "example.com/auction/grpc/proto";
+
+service AuctionService {
+    rpc BidRequest(Bid) returns (Ack);  
+    rpc AuctionStatus(Empty) returns (Ack);
+    rpc LotQuery(Empty) returns (Lot);
+}
+
+message Lot{
+    int64 id = 1;
+    string name = 2;
+    int64 asking_price = 3;
+    int64 starting_bid = 4;
+    int64 current_bid = 5;
+}
+
+message Bid {
+    int64 amount = 1;
+    int64 bidder_id = 2;
+}
+
+enum Status {
+    FAULT = 0;
+    ACCEPTED = 1;
+    UNDERBID = 2;
+    SOLD = 3;
+    IN_PROGRESS = 4;
+}
+
+message Ack {
+    int64 amount = 1;
+    Status result = 2;
+    int64 bidder_id = 3;
+}
+
+message Empty{}
