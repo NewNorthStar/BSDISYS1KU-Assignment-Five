@@ -1,35 +1,30 @@
-== A Distributed Auction System ==
+# A Distributed Auction System
 
-::Introduction::
+## Introduction
 
 You must implement a **distributed auction system** using replication: a distributed component which handles auctions, and provides operations for bidding and querying the state of an auction. The component must faithfully implement the semantics of the system described below, and must at least be resilient to one (1) crash failure.
 
+## MA Learning Goal
 
-::MA Learning Goal::
+The goal of this mandatory activity is that you learn (by doing) how to use replication to design a service that is resilient to crashes. In particular, it is important that you can recognize what the key issues that may arise are and understand how to deal with them.
 
-The goal of this mandatory activity is that you learn (by doing) how to use replication to design a service that is resilent to crashes. In particular, it is important that you can recognise what the key issues that may arise are and understand how to deal with them.
-
- 
-
-::API::
+## API
 
 Your system must be implemented as some number of nodes,  running on distinct processes (no threads). Clients direct API requests to any node they happen to know (it is up to you to decide how many nodes can be known). Nodes must respond to the following API
 
-Method:  bid
-Inputs:  amount (an int)
-Outputs: ack
+- Method:  `bid`
+- Inputs:  amount (an int)
+- Outputs: `ack`
+
 Comment: given a bid, returns an outcome among {fail, success or exception}
 
- 
+- Method:  `result`
+- Inputs:  void
+- Outputs: `outcome`
 
-Method:  result
-Inputs:  void
-Outputs: outcome
 Comment:  if the auction is over, it returns the result, else highest bid.
 
- 
-
-::Semantics::
+## Semantics
 
 Your component must have the following behaviour, for any reasonable sequentialisation/interleaving of requests to it:
 
@@ -41,17 +36,13 @@ Your component must have the following behaviour, for any reasonable sequentiali
 
 - bidders can query the system in order to know the state of the auction.
 
- 
-
-:: Faults :: 
+## Faults
 
 - Assume a network that has reliable, ordered message transport, where transmissions to non-failed nodes complete within a known time-limit.
 
 - Your component must be resilient to the failure-stop failure of one  (1) node.
 
- 
-
-:: Report ::
+## Report
 
 Write a 2-page report (if necessary you can go up to 3 pages) containing the following structure (exactly create four sections as below):
 
@@ -63,19 +54,15 @@ Write a 2-page report (if necessary you can go up to 3 pages) containing the fol
 
 - Correctness 2. An argument that your protocol is correct in the absence and the presence of failures.
 
- 
-
-:: Implementation ::
+## Implementation
 
 - Implement your system in GoLang. We strongly recommend that you reuse the the frameworks and libraries used in the previous mandatory activities.
 
 - Submit a log (as a separate file) documenting a correct system run under failures. Your log can be a collection of relevant print statements, that demonstrates the control flow trough the system. It must be clear from the log where crashes occur.
 
- - Provide a README file with instructions on how to run your implementation. 
+- Provide a README file with instructions on how to run your implementation. 
 
- 
-
-**>>** SUMMARY of what to submit on learnit **<<**
+## SUMMARY of what to submit on learnit
 
 - a link to a GitHub repo containing the code (please make sure the repo is public so that we can easily access it. Alternatively, you can submit a .zip file in learnit.
 
