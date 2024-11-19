@@ -16,6 +16,7 @@
 - A front-end service will 
     - allow clients to make contact with the auction leader, and
     - allow discovery of backup front-ends for clients to retain in case of front-end failure. 
+- Consider the possibility of clients using different front-end nodes simultaneously. 
 
 ## Client Functional Requirements
 
@@ -23,3 +24,4 @@
 - Clients want to poll the state of the auction at times. 
 - Clients have an ID which is consistent through the duration of the auction, even if they are not in permanent contact with the auction service. 
 - Clients bid up the item as the auction progresses. 
+- Clients discover front-end services for the auction through the discovery service provided. Should a front-end node fail, then it will try to use one of the other known front-ends. 
