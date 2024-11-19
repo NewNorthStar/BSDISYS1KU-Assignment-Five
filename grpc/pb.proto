@@ -1,10 +1,19 @@
 syntax = "proto3";
 option go_package = "example.com/auction/grpc/proto";
 
+// API available at a front-end providing node. 
 service AuctionService {
-    rpc BidRequest(Bid) returns (Ack);  
-    rpc AuctionStatus(Empty) returns (Ack);
-    rpc LotQuery(Empty) returns (Lot);
+    // Place a bid on the auction. Returns acknowledgement showing outcome of the bid.
+    rpc PutBid(Bid) returns (Ack);  
+
+    // Get the status of the auction. Returns acknowledgement showing the current auction state. 
+    rpc GetAuctionStatus(Empty) returns (Ack);
+
+    // Get details on the item up for auction. Returns lot message with details. 
+    rpc GetLot(Empty) returns (Lot);
+
+    // Discover front-end service nodes for keeping contact with the auction. Returns discovery of node IP addresses.
+    rpc GetDiscovery(Empty) returns (Discovery);
 }
 
 message Lot{
@@ -20,7 +29,7 @@ message Bid {
     int64 bidder_id = 2;
 }
 
-enum Status {
+enum StatusValue {
     FAULT = 0;
     ACCEPTED = 1;
     UNDERBID = 2;
@@ -30,8 +39,12 @@ enum Status {
 
 message Ack {
     int64 amount = 1;
-    Status result = 2;
+    StatusValue result = 2;
     int64 bidder_id = 3;
+}
+
+message Discovery {
+    repeated string ip_addresses = 1;
 }
 
 message Empty{}
