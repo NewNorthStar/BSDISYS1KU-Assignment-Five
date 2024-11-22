@@ -1,9 +1,12 @@
 package main
 
 import (
+	"log"
+	"net"
 	"sync"
 
 	proto "example.com/auction/grpc"
+	"google.golang.org/grpc"
 )
 
 /*
@@ -26,8 +29,49 @@ type AuctionService struct {
 	starting_bid int64
 }
 
-func main() {
+/*
+Creates and returns an auction struct.
+Simply hardcoded to be auctioning a course book.
+*/
+func newAuctionService() *AuctionService {
+	return &AuctionService{
+		top_bid: &proto.Bid{
+			Amount:   0,
+			BidderId: 0,
+		},
+		bid_time: 0,
 
+		name:         "Course Book",
+		asking_price: 80,
+		starting_bid: 40,
+	}
+}
+
+func main() {
+	service := newAuctionService()
+	listener := listenOn("localhost:5050")
+
+	service.startService(listener)
+}
+
+// Obtains a TCP listener on a given network address.
+func listenOn(address string) net.Listener {
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		log.Fatalf("failed to listen: %v\n", err)
+	}
+	return listener
+}
+
+// Begins serving ChittyChat gRPC service as a goroutine and returns.
+func (auction *AuctionService) startService(listener net.Listener) {
+	grpcServer := grpc.NewServer()
+	proto.RegisterAuctionServer(grpcServer, auction)
+	log.Printf("Auction on at %v\n", listener.Addr())
+	err := grpcServer.Serve(listener)
+	if err != nil {
+		log.Fatalf("Service failure: %v\n", err)
+	}
 }
 
 /*
@@ -36,7 +80,8 @@ Process an incoming bid against the current state of the auction.
 Returns 'true' if incoming bid is now the highest and 'false' otherwise.
 */
 func (auction *AuctionService) processBid(incoming *proto.Bid) bool {
-	if incoming.Amount <= auction.top_bid.Amount { // Pre-lock check. Under-bids cannot obtain lock.
+	if incoming.Amount <= auction.top_bid.Amount ||
+		incoming.Amount < auction.starting_bid { // Pre-lock check. Under-bids cannot obtain lock.
 		return false
 	}
 
