@@ -29,14 +29,14 @@ func main() {
 	conn := getConnectionToServer(addr)
 	defer conn.Close()
 
-	client := proto.NewAuctionFrontEndClient(conn)
+	client := proto.NewAuctionClient(conn)
 
 	lot = getLotInfo(client)
 	fmt.Println(lot)
 	// Client should then obtain auction details and place bids.
 }
 
-func getLotInfo(client proto.AuctionFrontEndClient) *proto.Lot {
+func getLotInfo(client proto.AuctionClient) *proto.Lot {
 	lot, err := client.GetLot(ctx, &proto.Empty{})
 	if err != nil {
 		log.Fatalf("client.GetLot error: %v", err)

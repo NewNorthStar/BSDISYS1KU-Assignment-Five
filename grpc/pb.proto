@@ -1,9 +1,9 @@
 syntax = "proto3";
 option go_package = "example.com/auction/grpc/proto";
 
-// API available at a front-end providing node. Should have discovery capabilities. 
-service AuctionFrontEnd {
-    // Place a bid on the auction. Returns acknowledgement showing outcome of the bid.
+// API available at a front-end providing node and between nodes. Should have discovery capabilities. 
+service Auction {
+    // Forward a bid to the auction. Returns acknowledgement showing outcome of the bid.
     rpc PutBid(Bid) returns (Ack);  
 
     // Get the status of the auction. Returns acknowledgement showing the current auction state. 
@@ -14,18 +14,6 @@ service AuctionFrontEnd {
 
     // Discover front-end service nodes for keeping contact with the auction. Returns discovery of node IP addresses.
     rpc GetDiscovery(Empty) returns (Discovery);
-}
-
-// API at the back-end. Should have election, failover and replication capabilities. 
-service Auction {
-    // Forward a bid to the auction. Returns acknowledgement showing outcome of the bid.
-    rpc PutBid(Bid) returns (Ack);  
-
-    // Get the status of the auction. Returns acknowledgement showing the current auction state. 
-    rpc GetAuctionStatus(Empty) returns (Ack);
-
-    // Get details on the item up for auction. Returns lot message with details. 
-    rpc GetLot(Empty) returns (Lot);
 }
 
 message Lot{

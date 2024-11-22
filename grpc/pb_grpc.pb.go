@@ -19,244 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuctionFrontEnd_PutBid_FullMethodName           = "/AuctionFrontEnd/PutBid"
-	AuctionFrontEnd_GetAuctionStatus_FullMethodName = "/AuctionFrontEnd/GetAuctionStatus"
-	AuctionFrontEnd_GetLot_FullMethodName           = "/AuctionFrontEnd/GetLot"
-	AuctionFrontEnd_GetDiscovery_FullMethodName     = "/AuctionFrontEnd/GetDiscovery"
-)
-
-// AuctionFrontEndClient is the client API for AuctionFrontEnd service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// API available at a front-end providing node. Should have discovery capabilities.
-type AuctionFrontEndClient interface {
-	// Place a bid on the auction. Returns acknowledgement showing outcome of the bid.
-	PutBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Ack, error)
-	// Get the status of the auction. Returns acknowledgement showing the current auction state.
-	GetAuctionStatus(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Ack, error)
-	// Get details on the item up for auction. Returns lot message with details.
-	GetLot(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Lot, error)
-	// Discover front-end service nodes for keeping contact with the auction. Returns discovery of node IP addresses.
-	GetDiscovery(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Discovery, error)
-}
-
-type auctionFrontEndClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewAuctionFrontEndClient(cc grpc.ClientConnInterface) AuctionFrontEndClient {
-	return &auctionFrontEndClient{cc}
-}
-
-func (c *auctionFrontEndClient) PutBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Ack, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Ack)
-	err := c.cc.Invoke(ctx, AuctionFrontEnd_PutBid_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *auctionFrontEndClient) GetAuctionStatus(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Ack, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Ack)
-	err := c.cc.Invoke(ctx, AuctionFrontEnd_GetAuctionStatus_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *auctionFrontEndClient) GetLot(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Lot, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Lot)
-	err := c.cc.Invoke(ctx, AuctionFrontEnd_GetLot_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *auctionFrontEndClient) GetDiscovery(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Discovery, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Discovery)
-	err := c.cc.Invoke(ctx, AuctionFrontEnd_GetDiscovery_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// AuctionFrontEndServer is the server API for AuctionFrontEnd service.
-// All implementations must embed UnimplementedAuctionFrontEndServer
-// for forward compatibility.
-//
-// API available at a front-end providing node. Should have discovery capabilities.
-type AuctionFrontEndServer interface {
-	// Place a bid on the auction. Returns acknowledgement showing outcome of the bid.
-	PutBid(context.Context, *Bid) (*Ack, error)
-	// Get the status of the auction. Returns acknowledgement showing the current auction state.
-	GetAuctionStatus(context.Context, *Empty) (*Ack, error)
-	// Get details on the item up for auction. Returns lot message with details.
-	GetLot(context.Context, *Empty) (*Lot, error)
-	// Discover front-end service nodes for keeping contact with the auction. Returns discovery of node IP addresses.
-	GetDiscovery(context.Context, *Empty) (*Discovery, error)
-	mustEmbedUnimplementedAuctionFrontEndServer()
-}
-
-// UnimplementedAuctionFrontEndServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedAuctionFrontEndServer struct{}
-
-func (UnimplementedAuctionFrontEndServer) PutBid(context.Context, *Bid) (*Ack, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PutBid not implemented")
-}
-func (UnimplementedAuctionFrontEndServer) GetAuctionStatus(context.Context, *Empty) (*Ack, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetAuctionStatus not implemented")
-}
-func (UnimplementedAuctionFrontEndServer) GetLot(context.Context, *Empty) (*Lot, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetLot not implemented")
-}
-func (UnimplementedAuctionFrontEndServer) GetDiscovery(context.Context, *Empty) (*Discovery, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetDiscovery not implemented")
-}
-func (UnimplementedAuctionFrontEndServer) mustEmbedUnimplementedAuctionFrontEndServer() {}
-func (UnimplementedAuctionFrontEndServer) testEmbeddedByValue()                         {}
-
-// UnsafeAuctionFrontEndServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to AuctionFrontEndServer will
-// result in compilation errors.
-type UnsafeAuctionFrontEndServer interface {
-	mustEmbedUnimplementedAuctionFrontEndServer()
-}
-
-func RegisterAuctionFrontEndServer(s grpc.ServiceRegistrar, srv AuctionFrontEndServer) {
-	// If the following call pancis, it indicates UnimplementedAuctionFrontEndServer was
-	// embedded by pointer and is nil.  This will cause panics if an
-	// unimplemented method is ever invoked, so we test this at initialization
-	// time to prevent it from happening at runtime later due to I/O.
-	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
-		t.testEmbeddedByValue()
-	}
-	s.RegisterService(&AuctionFrontEnd_ServiceDesc, srv)
-}
-
-func _AuctionFrontEnd_PutBid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Bid)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuctionFrontEndServer).PutBid(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuctionFrontEnd_PutBid_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionFrontEndServer).PutBid(ctx, req.(*Bid))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AuctionFrontEnd_GetAuctionStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuctionFrontEndServer).GetAuctionStatus(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuctionFrontEnd_GetAuctionStatus_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionFrontEndServer).GetAuctionStatus(ctx, req.(*Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AuctionFrontEnd_GetLot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuctionFrontEndServer).GetLot(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuctionFrontEnd_GetLot_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionFrontEndServer).GetLot(ctx, req.(*Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AuctionFrontEnd_GetDiscovery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuctionFrontEndServer).GetDiscovery(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuctionFrontEnd_GetDiscovery_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionFrontEndServer).GetDiscovery(ctx, req.(*Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// AuctionFrontEnd_ServiceDesc is the grpc.ServiceDesc for AuctionFrontEnd service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var AuctionFrontEnd_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "AuctionFrontEnd",
-	HandlerType: (*AuctionFrontEndServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "PutBid",
-			Handler:    _AuctionFrontEnd_PutBid_Handler,
-		},
-		{
-			MethodName: "GetAuctionStatus",
-			Handler:    _AuctionFrontEnd_GetAuctionStatus_Handler,
-		},
-		{
-			MethodName: "GetLot",
-			Handler:    _AuctionFrontEnd_GetLot_Handler,
-		},
-		{
-			MethodName: "GetDiscovery",
-			Handler:    _AuctionFrontEnd_GetDiscovery_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "grpc/pb.proto",
-}
-
-const (
 	Auction_PutBid_FullMethodName           = "/Auction/PutBid"
 	Auction_GetAuctionStatus_FullMethodName = "/Auction/GetAuctionStatus"
 	Auction_GetLot_FullMethodName           = "/Auction/GetLot"
+	Auction_GetDiscovery_FullMethodName     = "/Auction/GetDiscovery"
 )
 
 // AuctionClient is the client API for Auction service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// API at the back-end. Should have election, failover and replication capabilities.
+// API available at a front-end providing node and between nodes. Should have discovery capabilities.
 type AuctionClient interface {
 	// Forward a bid to the auction. Returns acknowledgement showing outcome of the bid.
 	PutBid(ctx context.Context, in *Bid, opts ...grpc.CallOption) (*Ack, error)
@@ -264,6 +37,8 @@ type AuctionClient interface {
 	GetAuctionStatus(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Ack, error)
 	// Get details on the item up for auction. Returns lot message with details.
 	GetLot(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Lot, error)
+	// Discover front-end service nodes for keeping contact with the auction. Returns discovery of node IP addresses.
+	GetDiscovery(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Discovery, error)
 }
 
 type auctionClient struct {
@@ -304,11 +79,21 @@ func (c *auctionClient) GetLot(ctx context.Context, in *Empty, opts ...grpc.Call
 	return out, nil
 }
 
+func (c *auctionClient) GetDiscovery(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Discovery, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Discovery)
+	err := c.cc.Invoke(ctx, Auction_GetDiscovery_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuctionServer is the server API for Auction service.
 // All implementations must embed UnimplementedAuctionServer
 // for forward compatibility.
 //
-// API at the back-end. Should have election, failover and replication capabilities.
+// API available at a front-end providing node and between nodes. Should have discovery capabilities.
 type AuctionServer interface {
 	// Forward a bid to the auction. Returns acknowledgement showing outcome of the bid.
 	PutBid(context.Context, *Bid) (*Ack, error)
@@ -316,6 +101,8 @@ type AuctionServer interface {
 	GetAuctionStatus(context.Context, *Empty) (*Ack, error)
 	// Get details on the item up for auction. Returns lot message with details.
 	GetLot(context.Context, *Empty) (*Lot, error)
+	// Discover front-end service nodes for keeping contact with the auction. Returns discovery of node IP addresses.
+	GetDiscovery(context.Context, *Empty) (*Discovery, error)
 	mustEmbedUnimplementedAuctionServer()
 }
 
@@ -334,6 +121,9 @@ func (UnimplementedAuctionServer) GetAuctionStatus(context.Context, *Empty) (*Ac
 }
 func (UnimplementedAuctionServer) GetLot(context.Context, *Empty) (*Lot, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLot not implemented")
+}
+func (UnimplementedAuctionServer) GetDiscovery(context.Context, *Empty) (*Discovery, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDiscovery not implemented")
 }
 func (UnimplementedAuctionServer) mustEmbedUnimplementedAuctionServer() {}
 func (UnimplementedAuctionServer) testEmbeddedByValue()                 {}
@@ -410,6 +200,24 @@ func _Auction_GetLot_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Auction_GetDiscovery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServer).GetDiscovery(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auction_GetDiscovery_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServer).GetDiscovery(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Auction_ServiceDesc is the grpc.ServiceDesc for Auction service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -428,6 +236,10 @@ var Auction_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetLot",
 			Handler:    _Auction_GetLot_Handler,
+		},
+		{
+			MethodName: "GetDiscovery",
+			Handler:    _Auction_GetDiscovery_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
