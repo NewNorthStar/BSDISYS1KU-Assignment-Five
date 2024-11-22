@@ -82,6 +82,7 @@ func (auction *AuctionService) startService(listener net.Listener) {
 	}
 }
 
+// Get the status of the auction. Returns acknowledgement showing the current auction state.
 func (auction *AuctionService) GetAuctionStatus(ctx context.Context, msg *proto.Empty) (*proto.Ack, error) {
 	lead := auction.top_bid
 	answer := &proto.Ack{
@@ -92,6 +93,7 @@ func (auction *AuctionService) GetAuctionStatus(ctx context.Context, msg *proto.
 	return answer, nil
 }
 
+// Discover front-end service nodes for keeping contact with the auction. Returns discovery of node IP addresses.
 func (auction *AuctionService) GetDiscovery(ctx context.Context, msg *proto.Empty) (*proto.Discovery, error) {
 	answer := &proto.Discovery{
 		IpAddresses: auction.known_nodes,
@@ -99,6 +101,7 @@ func (auction *AuctionService) GetDiscovery(ctx context.Context, msg *proto.Empt
 	return answer, nil
 }
 
+// Get details on the item up for auction. Returns lot message with details.
 func (auction *AuctionService) GetLot(ctx context.Context, msg *proto.Empty) (*proto.Lot, error) {
 	answer := &proto.Lot{
 		Id:          1,
@@ -110,6 +113,7 @@ func (auction *AuctionService) GetLot(ctx context.Context, msg *proto.Empty) (*p
 	return answer, nil
 }
 
+// Forward a bid to the auction. Returns acknowledgement showing outcome of the bid.
 func (auction *AuctionService) PutBid(ctx context.Context, msg *proto.Bid) (*proto.Ack, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PutBid not implemented")
 }
