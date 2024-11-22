@@ -1,4 +1,4 @@
-package server
+package main
 
 import proto "example.com/auction/grpc"
 
