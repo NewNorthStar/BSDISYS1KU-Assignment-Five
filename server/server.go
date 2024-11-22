@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"sync"
 
 	proto "example.com/auction/grpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 /*
@@ -72,6 +75,29 @@ func (auction *AuctionService) startService(listener net.Listener) {
 	if err != nil {
 		log.Fatalf("Service failure: %v\n", err)
 	}
+}
+
+func (auction *AuctionService) GetAuctionStatus(ctx context.Context, msg *proto.Empty) (*proto.Ack, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAuctionStatus not implemented")
+}
+
+func (auction *AuctionService) GetDiscovery(ctx context.Context, msg *proto.Empty) (*proto.Discovery, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDiscovery not implemented")
+}
+
+func (auction *AuctionService) GetLot(ctx context.Context, msg *proto.Empty) (*proto.Lot, error) {
+	answer := &proto.Lot{
+		Id:          1,
+		Name:        auction.name,
+		AskingPrice: auction.asking_price,
+		StartingBid: auction.starting_bid,
+		CurrentBid:  auction.top_bid.Amount,
+	}
+	return answer, nil
+}
+
+func (auction *AuctionService) PutBid(ctx context.Context, msg *proto.Bid) (*proto.Ack, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PutBid not implemented")
 }
 
 /*
