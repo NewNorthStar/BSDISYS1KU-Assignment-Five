@@ -23,6 +23,8 @@ If a new leader needs to be elected, the winner should be
 type AuctionService struct {
 	proto.UnimplementedAuctionServer
 
+	known_nodes []string
+
 	top_bid  *proto.Bid
 	bid_time int64      // Lamport timestamp that increases with each top bid.
 	bid_lock sync.Mutex // Controls access to bid.
@@ -38,6 +40,7 @@ Simply hardcoded to be auctioning a course book.
 */
 func newAuctionService() *AuctionService {
 	return &AuctionService{
+		known_nodes: make([]string, 0),
 		top_bid: &proto.Bid{
 			Amount:   0,
 			BidderId: 0,
@@ -66,11 +69,13 @@ func listenOn(address string) net.Listener {
 	return listener
 }
 
-// Begins serving ChittyChat gRPC service as a goroutine and returns.
+// Connects and begins the auction service.
 func (auction *AuctionService) startService(listener net.Listener) {
+	auction.known_nodes = append(auction.known_nodes, listener.Addr().String()) // Makes address available to GetDiscovery RPC.
+
 	grpcServer := grpc.NewServer()
 	proto.RegisterAuctionServer(grpcServer, auction)
-	log.Printf("Auction on at %v\n", listener.Addr())
+	log.Printf("Auction on at %s\n", listener.Addr().String())
 	err := grpcServer.Serve(listener)
 	if err != nil {
 		log.Fatalf("Service failure: %v\n", err)
@@ -88,7 +93,10 @@ func (auction *AuctionService) GetAuctionStatus(ctx context.Context, msg *proto.
 }
 
 func (auction *AuctionService) GetDiscovery(ctx context.Context, msg *proto.Empty) (*proto.Discovery, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetDiscovery not implemented")
+	answer := &proto.Discovery{
+		IpAddresses: auction.known_nodes,
+	}
+	return answer, nil
 }
 
 func (auction *AuctionService) GetLot(ctx context.Context, msg *proto.Empty) (*proto.Lot, error) {
