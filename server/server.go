@@ -78,7 +78,13 @@ func (auction *AuctionService) startService(listener net.Listener) {
 }
 
 func (auction *AuctionService) GetAuctionStatus(ctx context.Context, msg *proto.Empty) (*proto.Ack, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetAuctionStatus not implemented")
+	lead := auction.top_bid
+	answer := &proto.Ack{
+		Amount:   lead.Amount,
+		BidderId: lead.BidderId,
+		Result:   proto.StatusValue_IN_PROGRESS,
+	}
+	return answer, nil
 }
 
 func (auction *AuctionService) GetDiscovery(ctx context.Context, msg *proto.Empty) (*proto.Discovery, error) {
