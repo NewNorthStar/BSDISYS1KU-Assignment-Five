@@ -17,6 +17,7 @@ var ctx context.Context = context.Background()
 
 var name string
 var id int64
+var lot *proto.Lot
 
 func main() {
 	fmt.Print("Enter your name and press ENTER: ")
@@ -30,12 +31,17 @@ func main() {
 
 	client := proto.NewAuctionFrontEndClient(conn)
 
+	lot = getLotInfo(client)
+	fmt.Println(lot)
 	// Client should then obtain auction details and place bids.
+}
+
+func getLotInfo(client proto.AuctionFrontEndClient) *proto.Lot {
 	lot, err := client.GetLot(ctx, &proto.Empty{})
 	if err != nil {
 		log.Fatalf("client.GetLot error: %v", err)
 	}
-	fmt.Println(lot)
+	return lot
 }
 
 // Establishes connection to the server.
