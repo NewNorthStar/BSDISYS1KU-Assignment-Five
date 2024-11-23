@@ -31,8 +31,8 @@ func main() {
 
 	client := proto.NewAuctionClient(conn)
 
-	lot = getLotInfo(client)
-	fmt.Println(lot)
+	getLotInfo(client)
+	getAuctionStatus(client)
 	// Client should then obtain auction details and place bids.
 }
 
@@ -41,7 +41,17 @@ func getLotInfo(client proto.AuctionClient) *proto.Lot {
 	if err != nil {
 		log.Fatalf("client.GetLot error: %v", err)
 	}
+	fmt.Println(lot)
 	return lot
+}
+
+func getAuctionStatus(client proto.AuctionClient) *proto.Ack {
+	status, err := client.GetAuctionStatus(ctx, &proto.Empty{})
+	if err != nil {
+		log.Fatalf("client.GetLot error: %v", err)
+	}
+	fmt.Println(status)
+	return status
 }
 
 // Establishes connection to the server.
