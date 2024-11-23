@@ -31,9 +31,33 @@ func main() {
 
 	client := proto.NewAuctionClient(conn)
 
-	getLotInfo(client)
-	getAuctionStatus(client)
+	lot := getLotInfo(client)
+	status := getAuctionStatus(client)
+	fmt.Printf("The item up for auction is '%s'. \nPrice currently %d,- from bidder '%d'\n", lot.Name, status.Amount, status.BidderId)
+	fmt.Println(statusValueToString(status.Result))
 	// Client should then obtain auction details and place bids.
+}
+
+func statusValueToString(value proto.StatusValue) string {
+	switch value {
+	case proto.StatusValue_FAULT:
+		return "An auction service ERROR occurred."
+	case proto.StatusValue_ACCEPTED:
+		return "Your bid has been accepted."
+	case proto.StatusValue_UNDERBID:
+		return "Your bid was REJECTED as too low."
+	case proto.StatusValue_NOT_STARTED:
+		return "The auction has not started yet."
+	case proto.StatusValue_IN_PROGRESS:
+		return "The auction is in progress."
+	case proto.StatusValue_SOLD:
+		return "The auction has closed and the item has been sold."
+	case proto.StatusValue_CLOSED:
+		return "The auction has closed with no takers."
+	default:
+		log.Fatalln("ERROR - Unknown proto.StatusValue")
+		return "ERROR - Unknown proto.StatusValue"
+	}
 }
 
 func getLotInfo(client proto.AuctionClient) *proto.Lot {
