@@ -11,6 +11,13 @@ import (
 	"google.golang.org/grpc"
 )
 
+func main() {
+	service := newAuctionService()
+	listener := listenOn("localhost:5050")
+
+	service.startService(listener)
+}
+
 /*
 Auction nodes either conduct the auction as the leader,
 or follow the auction for redundancy.
@@ -56,13 +63,6 @@ func newAuctionService() *AuctionService {
 
 		closing_time: time.Now().Add(time.Second * 120),
 	}
-}
-
-func main() {
-	service := newAuctionService()
-	listener := listenOn("localhost:5050")
-
-	service.startService(listener)
 }
 
 // Obtains a TCP listener on a given network address.
@@ -183,15 +183,13 @@ func (auction *AuctionService) processBid(bid *proto.Bid) proto.StatusValue {
 	defer auction.bid_lock.Unlock()
 	auction.bid_time++
 
-	if bid.BidderId == 0 {
+	if bid.Amount <= auction.top_bid.Amount { // Second check once lock is obtained.
+		return proto.StatusValue_UNDERBID
+	}
+	if bid.BidderId == 0 { // New bidders get an ID assigned and returned.
 		auction.bidders++
 		bid.BidderId = auction.bidders
 	}
-
-	if bid.Amount <= auction.top_bid.Amount { // Second check once lock is obtained.
-		return proto.StatusValue_UNDERBID
-	} else {
-		auction.top_bid = bid
-		return proto.StatusValue_ACCEPTED
-	}
+	auction.top_bid = bid
+	return proto.StatusValue_ACCEPTED
 }

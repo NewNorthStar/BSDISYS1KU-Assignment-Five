@@ -28,11 +28,14 @@ func main() {
 	client := proto.NewAuctionClient(conn)
 
 	getAndShowAuctionDetails(client)
-	// Client should then obtain auction details and place bids.
-	biddingInteraction(client)
+
+	interactionLoop(client)
 }
 
-func biddingInteraction(client proto.AuctionClient) {
+/*
+User-interaction loop. Parses the amount to bid and sends it to the auction.
+*/
+func interactionLoop(client proto.AuctionClient) {
 	for {
 		fmt.Print("To bid, enter an amount and press ENTER: ")
 		amount, err := strconv.ParseInt(nextLine(), 10, 0)
@@ -50,7 +53,7 @@ func biddingInteraction(client proto.AuctionClient) {
 			continue
 		}
 
-		if my_id == 0 && (ack.Result == proto.StatusValue_ACCEPTED) {
+		if my_id == 0 && (ack.Result == proto.StatusValue_ACCEPTED || ack.Result == proto.StatusValue_UNDERBID) {
 			my_id = ack.BidderId
 			fmt.Printf("You are bidder #%d\n", my_id)
 		}
@@ -59,6 +62,9 @@ func biddingInteraction(client proto.AuctionClient) {
 	}
 }
 
+/*
+Info gathering and display method for when first connecting to the auction.
+*/
 func getAndShowAuctionDetails(client proto.AuctionClient) {
 	var err error
 	lot, err = client.GetLot(ctx, &proto.Empty{})
@@ -77,6 +83,9 @@ func getAndShowAuctionDetails(client proto.AuctionClient) {
 	displayAcknowledge(ack)
 }
 
+/*
+Display method for AuctionService ack messages.
+*/
 func displayAcknowledge(ack *proto.Ack) {
 	switch ack.Result {
 	case proto.StatusValue_FAULT:
@@ -91,6 +100,9 @@ func displayAcknowledge(ack *proto.Ack) {
 		fmt.Printf("The auction is in progress.\n")
 	case proto.StatusValue_SOLD:
 		fmt.Printf("The auction has closed and the item has been sold to bidder #%d for %d,-\n", ack.BidderId, ack.Amount)
+		if ack.BidderId == my_id {
+			fmt.Println("You won the auction!")
+		}
 	case proto.StatusValue_CLOSED:
 		fmt.Printf("The auction has closed with no takers.\n")
 	default:
