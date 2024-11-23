@@ -16,10 +16,7 @@ service Auction {
 
     // Discover front-end service nodes for keeping contact with the auction. Returns discovery of node IP addresses.
     rpc GetDiscovery(Empty) returns (Discovery);
-}
 
-// API for interaction between nodes. E.g. for updating follower nodes.
-service AuctionInternal {
     // Updates a follower node. The follower returns a confirmation when this has happened.
     rpc UpdateNode(NodeState) returns (Empty);
 

@@ -23,6 +23,9 @@ const (
 	Auction_GetAuctionStatus_FullMethodName = "/Auction/GetAuctionStatus"
 	Auction_GetLot_FullMethodName           = "/Auction/GetLot"
 	Auction_GetDiscovery_FullMethodName     = "/Auction/GetDiscovery"
+	Auction_UpdateNode_FullMethodName       = "/Auction/UpdateNode"
+	Auction_Register_FullMethodName         = "/Auction/Register"
+	Auction_Ping_FullMethodName             = "/Auction/Ping"
 )
 
 // AuctionClient is the client API for Auction service.
@@ -39,6 +42,12 @@ type AuctionClient interface {
 	GetLot(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Lot, error)
 	// Discover front-end service nodes for keeping contact with the auction. Returns discovery of node IP addresses.
 	GetDiscovery(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Discovery, error)
+	// Updates a follower node. The follower returns a confirmation when this has happened.
+	UpdateNode(ctx context.Context, in *NodeState, opts ...grpc.CallOption) (*Empty, error)
+	// Register a follower node. If the leader is able to accept this, it will return an empty message.
+	Register(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Lot, error)
+	// Ping a node to see that it is still active.
+	Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type auctionClient struct {
@@ -89,6 +98,36 @@ func (c *auctionClient) GetDiscovery(ctx context.Context, in *Empty, opts ...grp
 	return out, nil
 }
 
+func (c *auctionClient) UpdateNode(ctx context.Context, in *NodeState, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, Auction_UpdateNode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *auctionClient) Register(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Lot, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Lot)
+	err := c.cc.Invoke(ctx, Auction_Register_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *auctionClient) Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, Auction_Ping_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuctionServer is the server API for Auction service.
 // All implementations must embed UnimplementedAuctionServer
 // for forward compatibility.
@@ -103,6 +142,12 @@ type AuctionServer interface {
 	GetLot(context.Context, *Empty) (*Lot, error)
 	// Discover front-end service nodes for keeping contact with the auction. Returns discovery of node IP addresses.
 	GetDiscovery(context.Context, *Empty) (*Discovery, error)
+	// Updates a follower node. The follower returns a confirmation when this has happened.
+	UpdateNode(context.Context, *NodeState) (*Empty, error)
+	// Register a follower node. If the leader is able to accept this, it will return an empty message.
+	Register(context.Context, *Node) (*Lot, error)
+	// Ping a node to see that it is still active.
+	Ping(context.Context, *Empty) (*Empty, error)
 	mustEmbedUnimplementedAuctionServer()
 }
 
@@ -124,6 +169,15 @@ func (UnimplementedAuctionServer) GetLot(context.Context, *Empty) (*Lot, error) 
 }
 func (UnimplementedAuctionServer) GetDiscovery(context.Context, *Empty) (*Discovery, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDiscovery not implemented")
+}
+func (UnimplementedAuctionServer) UpdateNode(context.Context, *NodeState) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateNode not implemented")
+}
+func (UnimplementedAuctionServer) Register(context.Context, *Node) (*Lot, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
+}
+func (UnimplementedAuctionServer) Ping(context.Context, *Empty) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
 }
 func (UnimplementedAuctionServer) mustEmbedUnimplementedAuctionServer() {}
 func (UnimplementedAuctionServer) testEmbeddedByValue()                 {}
@@ -218,6 +272,60 @@ func _Auction_GetDiscovery_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Auction_UpdateNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NodeState)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServer).UpdateNode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auction_UpdateNode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServer).UpdateNode(ctx, req.(*NodeState))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Auction_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Node)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServer).Register(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auction_Register_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServer).Register(ctx, req.(*Node))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Auction_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServer).Ping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auction_Ping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServer).Ping(ctx, req.(*Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Auction_ServiceDesc is the grpc.ServiceDesc for Auction service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -241,193 +349,17 @@ var Auction_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetDiscovery",
 			Handler:    _Auction_GetDiscovery_Handler,
 		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "grpc/pb.proto",
-}
-
-const (
-	AuctionInternal_UpdateNode_FullMethodName = "/AuctionInternal/UpdateNode"
-	AuctionInternal_Register_FullMethodName   = "/AuctionInternal/Register"
-	AuctionInternal_Ping_FullMethodName       = "/AuctionInternal/Ping"
-)
-
-// AuctionInternalClient is the client API for AuctionInternal service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// API for interaction between nodes. E.g. for updating follower nodes.
-type AuctionInternalClient interface {
-	// Updates a follower node. The follower returns a confirmation when this has happened.
-	UpdateNode(ctx context.Context, in *NodeState, opts ...grpc.CallOption) (*Empty, error)
-	// Register a follower node. If the leader is able to accept this, it will return an empty message.
-	Register(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Lot, error)
-	// Ping a node to see that it is still active.
-	Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
-}
-
-type auctionInternalClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewAuctionInternalClient(cc grpc.ClientConnInterface) AuctionInternalClient {
-	return &auctionInternalClient{cc}
-}
-
-func (c *auctionInternalClient) UpdateNode(ctx context.Context, in *NodeState, opts ...grpc.CallOption) (*Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
-	err := c.cc.Invoke(ctx, AuctionInternal_UpdateNode_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *auctionInternalClient) Register(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Lot, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Lot)
-	err := c.cc.Invoke(ctx, AuctionInternal_Register_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *auctionInternalClient) Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
-	err := c.cc.Invoke(ctx, AuctionInternal_Ping_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// AuctionInternalServer is the server API for AuctionInternal service.
-// All implementations must embed UnimplementedAuctionInternalServer
-// for forward compatibility.
-//
-// API for interaction between nodes. E.g. for updating follower nodes.
-type AuctionInternalServer interface {
-	// Updates a follower node. The follower returns a confirmation when this has happened.
-	UpdateNode(context.Context, *NodeState) (*Empty, error)
-	// Register a follower node. If the leader is able to accept this, it will return an empty message.
-	Register(context.Context, *Node) (*Lot, error)
-	// Ping a node to see that it is still active.
-	Ping(context.Context, *Empty) (*Empty, error)
-	mustEmbedUnimplementedAuctionInternalServer()
-}
-
-// UnimplementedAuctionInternalServer must be embedded to have
-// forward compatible implementations.
-//
-// NOTE: this should be embedded by value instead of pointer to avoid a nil
-// pointer dereference when methods are called.
-type UnimplementedAuctionInternalServer struct{}
-
-func (UnimplementedAuctionInternalServer) UpdateNode(context.Context, *NodeState) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateNode not implemented")
-}
-func (UnimplementedAuctionInternalServer) Register(context.Context, *Node) (*Lot, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
-}
-func (UnimplementedAuctionInternalServer) Ping(context.Context, *Empty) (*Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
-}
-func (UnimplementedAuctionInternalServer) mustEmbedUnimplementedAuctionInternalServer() {}
-func (UnimplementedAuctionInternalServer) testEmbeddedByValue()                         {}
-
-// UnsafeAuctionInternalServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to AuctionInternalServer will
-// result in compilation errors.
-type UnsafeAuctionInternalServer interface {
-	mustEmbedUnimplementedAuctionInternalServer()
-}
-
-func RegisterAuctionInternalServer(s grpc.ServiceRegistrar, srv AuctionInternalServer) {
-	// If the following call pancis, it indicates UnimplementedAuctionInternalServer was
-	// embedded by pointer and is nil.  This will cause panics if an
-	// unimplemented method is ever invoked, so we test this at initialization
-	// time to prevent it from happening at runtime later due to I/O.
-	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
-		t.testEmbeddedByValue()
-	}
-	s.RegisterService(&AuctionInternal_ServiceDesc, srv)
-}
-
-func _AuctionInternal_UpdateNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(NodeState)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuctionInternalServer).UpdateNode(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuctionInternal_UpdateNode_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionInternalServer).UpdateNode(ctx, req.(*NodeState))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AuctionInternal_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Node)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuctionInternalServer).Register(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuctionInternal_Register_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionInternalServer).Register(ctx, req.(*Node))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AuctionInternal_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuctionInternalServer).Ping(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuctionInternal_Ping_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionInternalServer).Ping(ctx, req.(*Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// AuctionInternal_ServiceDesc is the grpc.ServiceDesc for AuctionInternal service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var AuctionInternal_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "AuctionInternal",
-	HandlerType: (*AuctionInternalServer)(nil),
-	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "UpdateNode",
-			Handler:    _AuctionInternal_UpdateNode_Handler,
+			Handler:    _Auction_UpdateNode_Handler,
 		},
 		{
 			MethodName: "Register",
-			Handler:    _AuctionInternal_Register_Handler,
+			Handler:    _Auction_Register_Handler,
 		},
 		{
 			MethodName: "Ping",
-			Handler:    _AuctionInternal_Ping_Handler,
+			Handler:    _Auction_Ping_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
