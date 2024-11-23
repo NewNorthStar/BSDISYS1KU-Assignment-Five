@@ -78,6 +78,13 @@ func listenOn(address string) net.Listener {
 func (auction *AuctionService) startService(listener net.Listener) {
 	auction.known_nodes = append(auction.known_nodes, listener.Addr().String()) // Makes address available to GetDiscovery RPC.
 
+	go func() {
+		for time.Now().Before(auction.closing_time) {
+			time.Sleep(2 * time.Second)
+		}
+		log.Printf("Auction was closed at %s\n", auction.closing_time.String())
+	}()
+
 	grpcServer := grpc.NewServer()
 	proto.RegisterAuctionServer(grpcServer, auction)
 	log.Printf("Auction on at %s\n", listener.Addr().String())
