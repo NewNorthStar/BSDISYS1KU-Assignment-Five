@@ -16,7 +16,7 @@ var stdIn = setScanner()
 var ctx context.Context = context.Background()
 
 var name string
-var id int64
+var my_id int64
 var lot *proto.Lot
 
 func main() {
@@ -28,14 +28,25 @@ func main() {
 
 	conn := getConnectionToServer(addr)
 	defer conn.Close()
-
 	client := proto.NewAuctionClient(conn)
 
-	lot := getLotInfo(client)
-	status := getAuctionStatus(client)
+	getAndShowAuctionDetails(client)
+	// Client should then obtain auction details and place bids.
+}
+
+func getAndShowAuctionDetails(client proto.AuctionClient) {
+	var err error
+	lot, err = client.GetLot(ctx, &proto.Empty{})
+	if err != nil {
+		log.Fatalf("client.GetLot error: %v", err)
+	}
+	var status *proto.Ack
+	status, err = client.GetAuctionStatus(ctx, &proto.Empty{})
+	if err != nil {
+		log.Fatalf("client.GetAuctionStatus error: %v", err)
+	}
 	fmt.Printf("The item up for auction is '%s'. \nPrice currently %d,- from bidder '%d'\n", lot.Name, status.Amount, status.BidderId)
 	fmt.Println(statusValueToString(status.Result))
-	// Client should then obtain auction details and place bids.
 }
 
 func statusValueToString(value proto.StatusValue) string {
@@ -45,7 +56,7 @@ func statusValueToString(value proto.StatusValue) string {
 	case proto.StatusValue_ACCEPTED:
 		return "Your bid has been accepted."
 	case proto.StatusValue_UNDERBID:
-		return "Your bid was REJECTED as too low."
+		return "Your bid has been REJECTED as too low."
 	case proto.StatusValue_NOT_STARTED:
 		return "The auction has not started yet."
 	case proto.StatusValue_IN_PROGRESS:
@@ -58,24 +69,6 @@ func statusValueToString(value proto.StatusValue) string {
 		log.Fatalln("ERROR - Unknown proto.StatusValue")
 		return "ERROR - Unknown proto.StatusValue"
 	}
-}
-
-func getLotInfo(client proto.AuctionClient) *proto.Lot {
-	lot, err := client.GetLot(ctx, &proto.Empty{})
-	if err != nil {
-		log.Fatalf("client.GetLot error: %v", err)
-	}
-	fmt.Println(lot)
-	return lot
-}
-
-func getAuctionStatus(client proto.AuctionClient) *proto.Ack {
-	status, err := client.GetAuctionStatus(ctx, &proto.Empty{})
-	if err != nil {
-		log.Fatalf("client.GetLot error: %v", err)
-	}
-	fmt.Println(status)
-	return status
 }
 
 // Establishes connection to the server.
