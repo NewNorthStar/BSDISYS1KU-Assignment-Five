@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	proto "example.com/auction/grpc"
 	"google.golang.org/grpc"
@@ -15,14 +16,10 @@ import (
 var stdIn = setScanner()
 var ctx context.Context = context.Background()
 
-var name string
-var my_id int64
+var my_id int64 = 0
 var lot *proto.Lot
 
 func main() {
-	fmt.Print("Enter your name and press ENTER: ")
-	name = nextLine()
-
 	fmt.Print("Enter auction IP-address:port and press ENTER: ")
 	addr := nextLine()
 
@@ -32,6 +29,34 @@ func main() {
 
 	getAndShowAuctionDetails(client)
 	// Client should then obtain auction details and place bids.
+	biddingInteraction(client)
+}
+
+func biddingInteraction(client proto.AuctionClient) {
+	for {
+		fmt.Print("To bid, enter an amount and press ENTER: ")
+		amount, err := strconv.ParseInt(nextLine(), 10, 0)
+		if err != nil {
+			log.Println("*** Unable to parse amount. ***")
+			continue
+		}
+		ack, err := client.PutBid(ctx, &proto.Bid{
+			Amount:   amount,
+			BidderId: my_id,
+		})
+
+		if err != nil {
+			log.Println(err.Error())
+			continue
+		}
+
+		if my_id == 0 && (ack.Result == proto.StatusValue_ACCEPTED) {
+			my_id = ack.BidderId
+			fmt.Printf("You are bidder #%d\n", my_id)
+		}
+
+		displayAcknowledge(ack)
+	}
 }
 
 func getAndShowAuctionDetails(client proto.AuctionClient) {
@@ -40,34 +65,36 @@ func getAndShowAuctionDetails(client proto.AuctionClient) {
 	if err != nil {
 		log.Fatalf("client.GetLot error: %v", err)
 	}
-	var status *proto.Ack
-	status, err = client.GetAuctionStatus(ctx, &proto.Empty{})
+	var ack *proto.Ack
+	ack, err = client.GetAuctionStatus(ctx, &proto.Empty{})
 	if err != nil {
 		log.Fatalf("client.GetAuctionStatus error: %v", err)
 	}
-	fmt.Printf("The item up for auction is '%s'. \nPrice currently %d,- from bidder '%d'\n", lot.Name, status.Amount, status.BidderId)
-	fmt.Println(statusValueToString(status.Result))
+	fmt.Printf("The item up for auction is '%s'. \nPrice currently %d,- from bidder #%d\n", lot.Name, ack.Amount, ack.BidderId)
+	if ack.Amount < lot.StartingBid {
+		fmt.Printf("The starting bid is %d,-\n", lot.StartingBid)
+	}
+	displayAcknowledge(ack)
 }
 
-func statusValueToString(value proto.StatusValue) string {
-	switch value {
+func displayAcknowledge(ack *proto.Ack) {
+	switch ack.Result {
 	case proto.StatusValue_FAULT:
-		return "An auction service ERROR occurred."
+		fmt.Printf("An auction service ERROR occurred.\n")
 	case proto.StatusValue_ACCEPTED:
-		return "Your bid has been accepted."
+		fmt.Printf("Your bid has been accepted. The price is now %d,-\n", ack.Amount)
 	case proto.StatusValue_UNDERBID:
-		return "Your bid has been REJECTED as too low."
+		fmt.Printf("Your bid has been REJECTED as too low. The current top bid is %d,-\n", ack.Amount)
 	case proto.StatusValue_NOT_STARTED:
-		return "The auction has not started yet."
+		fmt.Printf("The auction has not started yet.\n")
 	case proto.StatusValue_IN_PROGRESS:
-		return "The auction is in progress."
+		fmt.Printf("The auction is in progress.\n")
 	case proto.StatusValue_SOLD:
-		return "The auction has closed and the item has been sold."
+		fmt.Printf("The auction has closed and the item has been sold to bidder #%d for %d,-\n", ack.BidderId, ack.Amount)
 	case proto.StatusValue_CLOSED:
-		return "The auction has closed with no takers."
+		fmt.Printf("The auction has closed with no takers.\n")
 	default:
-		log.Fatalln("ERROR - Unknown proto.StatusValue")
-		return "ERROR - Unknown proto.StatusValue"
+		log.Fatalf("ERROR - Unknown proto.StatusValue\n")
 	}
 }
 

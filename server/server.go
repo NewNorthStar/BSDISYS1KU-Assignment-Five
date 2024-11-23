@@ -84,7 +84,7 @@ func (auction *AuctionService) startService(listener net.Listener) {
 		}
 		log.Printf("Auction was closed at %s\n", auction.closing_time.String())
 		if auction.top_bid.BidderId != 0 {
-			log.Printf("The item '%s' was sold to bidder '%d' for %d,-\n", auction.name, auction.top_bid.BidderId, auction.top_bid.Amount)
+			log.Printf("The item '%s' was sold to bidder #%d for %d,-\n", auction.name, auction.top_bid.BidderId, auction.top_bid.Amount)
 		} else {
 			log.Printf("There were no bidders for the item '%s'\n", auction.name)
 		}
@@ -156,14 +156,10 @@ func (auction *AuctionService) PutBid(ctx context.Context, msg *proto.Bid) (*pro
 		return auction.GetAuctionStatus(ctx, &proto.Empty{})
 	}
 
-	defer log.Printf("PutBid: Bid currently at %v\n", auction.top_bid)
-
-	if msg.BidderId == 0 {
-		auction.bidders++
-		msg.BidderId = auction.bidders
-	}
-
 	result := auction.processBid(msg)
+
+	log.Printf("PutBid op#%d: Bid now at %d,- held by bidder #%d\n", auction.bid_time, auction.top_bid.Amount, auction.top_bid.BidderId)
+
 	answer := &proto.Ack{
 		Amount:   auction.top_bid.Amount,
 		Result:   result,
@@ -177,20 +173,25 @@ Process an incoming bid against the current state of the auction.
 
 Returns 'true' if incoming bid is now the highest and 'false' otherwise.
 */
-func (auction *AuctionService) processBid(incoming *proto.Bid) proto.StatusValue {
-	if incoming.Amount <= auction.top_bid.Amount ||
-		incoming.Amount < auction.starting_bid { // Pre-lock check. Under-bids cannot obtain lock.
+func (auction *AuctionService) processBid(bid *proto.Bid) proto.StatusValue {
+	if bid.Amount <= auction.top_bid.Amount ||
+		bid.Amount < auction.starting_bid { // Pre-lock check. Under-bids cannot obtain lock.
 		return proto.StatusValue_UNDERBID
 	}
 
 	auction.bid_lock.Lock()
 	defer auction.bid_lock.Unlock()
+	auction.bid_time++
 
-	if incoming.Amount <= auction.top_bid.Amount { // Second check once lock is obtained.
+	if bid.BidderId == 0 {
+		auction.bidders++
+		bid.BidderId = auction.bidders
+	}
+
+	if bid.Amount <= auction.top_bid.Amount { // Second check once lock is obtained.
 		return proto.StatusValue_UNDERBID
 	} else {
-		auction.top_bid = incoming
-		auction.bid_time++
+		auction.top_bid = bid
 		return proto.StatusValue_ACCEPTED
 	}
 }
