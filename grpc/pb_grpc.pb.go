@@ -248,6 +248,7 @@ var Auction_ServiceDesc = grpc.ServiceDesc{
 
 const (
 	AuctionInternal_UpdateNode_FullMethodName = "/AuctionInternal/UpdateNode"
+	AuctionInternal_Register_FullMethodName   = "/AuctionInternal/Register"
 	AuctionInternal_Ping_FullMethodName       = "/AuctionInternal/Ping"
 )
 
@@ -259,6 +260,8 @@ const (
 type AuctionInternalClient interface {
 	// Updates a follower node. The follower returns a confirmation when this has happened.
 	UpdateNode(ctx context.Context, in *NodeState, opts ...grpc.CallOption) (*Empty, error)
+	// Register a follower node. If the leader is able to accept this, it will return an empty message.
+	Register(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Empty, error)
 	// Ping a node to see that it is still active.
 	Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 }
@@ -275,6 +278,16 @@ func (c *auctionInternalClient) UpdateNode(ctx context.Context, in *NodeState, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Empty)
 	err := c.cc.Invoke(ctx, AuctionInternal_UpdateNode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *auctionInternalClient) Register(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, AuctionInternal_Register_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -299,6 +312,8 @@ func (c *auctionInternalClient) Ping(ctx context.Context, in *Empty, opts ...grp
 type AuctionInternalServer interface {
 	// Updates a follower node. The follower returns a confirmation when this has happened.
 	UpdateNode(context.Context, *NodeState) (*Empty, error)
+	// Register a follower node. If the leader is able to accept this, it will return an empty message.
+	Register(context.Context, *Node) (*Empty, error)
 	// Ping a node to see that it is still active.
 	Ping(context.Context, *Empty) (*Empty, error)
 	mustEmbedUnimplementedAuctionInternalServer()
@@ -313,6 +328,9 @@ type UnimplementedAuctionInternalServer struct{}
 
 func (UnimplementedAuctionInternalServer) UpdateNode(context.Context, *NodeState) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateNode not implemented")
+}
+func (UnimplementedAuctionInternalServer) Register(context.Context, *Node) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
 }
 func (UnimplementedAuctionInternalServer) Ping(context.Context, *Empty) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
@@ -356,6 +374,24 @@ func _AuctionInternal_UpdateNode_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuctionInternal_Register_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Node)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionInternalServer).Register(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuctionInternal_Register_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionInternalServer).Register(ctx, req.(*Node))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AuctionInternal_Ping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Empty)
 	if err := dec(in); err != nil {
@@ -384,6 +420,10 @@ var AuctionInternal_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateNode",
 			Handler:    _AuctionInternal_UpdateNode_Handler,
+		},
+		{
+			MethodName: "Register",
+			Handler:    _AuctionInternal_Register_Handler,
 		},
 		{
 			MethodName: "Ping",

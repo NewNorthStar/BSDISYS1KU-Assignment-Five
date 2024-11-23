@@ -21,8 +21,15 @@ service AuctionInternal {
     // Updates a follower node. The follower returns a confirmation when this has happened.
     rpc UpdateNode(NodeState) returns (Empty);
 
+    // Register a follower node. If the leader is able to accept this, it will return an empty message.
+    rpc Register(Node) returns (Empty);
+
     // Ping a node to see that it is still active. 
     rpc Ping(Empty) returns (Empty);
+}
+
+message Node {
+    string addr = 1;
 }
 
 message NodeState {
