@@ -112,7 +112,7 @@ func displayAcknowledge(ack *proto.Ack) {
 	}
 }
 
-// Establishes connection to the server.
+// Establishes connection to a server.
 func getConnectionToServer(addr string) *grpc.ClientConn {
 	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {

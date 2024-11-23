@@ -11,8 +11,11 @@ import (
 
 	proto "example.com/auction/grpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+var ctx context.Context = context.Background()
 
 /*
 Args[1] = My web socket.
@@ -31,14 +34,39 @@ func main() {
 }
 
 func runAsLeader() {
+	listener := listenOn(os.Args[1])
 	service := newAuctionService()
 	service.closing_time = time.Now().Add(time.Second * 120)
-	listener := listenOn(os.Args[1])
 	service.startService(listener)
 }
 
 func runAsFollower() {
+	listener := listenOn(os.Args[1])
+	service := newAuctionService()
 
+	conn := getConnectionToServer(os.Args[2])
+	defer conn.Close()
+	client := proto.NewAuctionClient(conn)
+
+	lot, err := client.Register(ctx, &proto.Node{
+		Addr: listener.Addr().String(),
+	})
+	if err != nil {
+		log.Fatalf("Replication error: %v\n", err)
+	}
+	service.name = lot.Name
+	service.asking_price = lot.AskingPrice
+	service.starting_bid = lot.StartingBid
+	service.closing_time = lot.ClosingTime.AsTime().In(time.Local)
+}
+
+// Establishes connection to a server.
+func getConnectionToServer(addr string) *grpc.ClientConn {
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("getConnectionToServer error: %v", err)
+	}
+	return conn
 }
 
 /*
