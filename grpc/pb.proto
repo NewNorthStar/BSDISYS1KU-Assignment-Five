@@ -1,7 +1,7 @@
 syntax = "proto3";
 option go_package = "example.com/auction/grpc/proto";
 
-// API available at a front-end providing node and between nodes. Should have discovery capabilities. 
+// API available at a front-end providing node. Should have discovery capabilities. 
 service Auction {
     // Forward a bid to the auction. Returns acknowledgement showing outcome of the bid.
     rpc PutBid(Bid) returns (Ack);  
@@ -16,7 +16,22 @@ service Auction {
     rpc GetDiscovery(Empty) returns (Discovery);
 }
 
-message Lot{
+// API for interaction between nodes. E.g. for updating follower nodes.
+service AuctionInternal {
+    // Updates a follower node. The follower returns a confirmation when this has happened.
+    rpc UpdateNode(NodeState) returns (Empty);
+
+    // Ping a node to see that it is still active. 
+    rpc Ping(Empty) returns (Empty);
+}
+
+message NodeState {
+    Bid top_bid = 1;
+    int64 bid_time = 2;
+    int64 bidders = 3;
+}
+
+message Lot {
     int64 id = 1;
     string name = 2;
     int64 asking_price = 3;
@@ -49,4 +64,4 @@ message Discovery {
     repeated string ip_addresses = 1;
 }
 
-message Empty{}
+message Empty {}
