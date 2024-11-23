@@ -20,7 +20,7 @@ service Auction {
     // Updates a follower node. The follower returns a confirmation when this has happened.
     rpc UpdateNode(NodeState) returns (Empty);
 
-    // Register a follower node. If the leader is able to accept this, it will return an empty message.
+    // Register a follower node. If the leader is able to accept this, it will return a Lot message.
     rpc Register(Node) returns (Lot);
 
     // Ping a node to see that it is still active. 

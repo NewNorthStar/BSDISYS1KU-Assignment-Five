@@ -44,7 +44,7 @@ type AuctionClient interface {
 	GetDiscovery(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Discovery, error)
 	// Updates a follower node. The follower returns a confirmation when this has happened.
 	UpdateNode(ctx context.Context, in *NodeState, opts ...grpc.CallOption) (*Empty, error)
-	// Register a follower node. If the leader is able to accept this, it will return an empty message.
+	// Register a follower node. If the leader is able to accept this, it will return a Lot message.
 	Register(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Lot, error)
 	// Ping a node to see that it is still active.
 	Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
@@ -144,7 +144,7 @@ type AuctionServer interface {
 	GetDiscovery(context.Context, *Empty) (*Discovery, error)
 	// Updates a follower node. The follower returns a confirmation when this has happened.
 	UpdateNode(context.Context, *NodeState) (*Empty, error)
-	// Register a follower node. If the leader is able to accept this, it will return an empty message.
+	// Register a follower node. If the leader is able to accept this, it will return a Lot message.
 	Register(context.Context, *Node) (*Lot, error)
 	// Ping a node to see that it is still active.
 	Ping(context.Context, *Empty) (*Empty, error)

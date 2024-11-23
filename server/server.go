@@ -48,6 +48,7 @@ func runAsFollower() {
 	defer conn.Close()
 	client := proto.NewAuctionClient(conn)
 
+	fmt.Println("I will register!!!")
 	lot, err := client.Register(ctx, &proto.Node{
 		Addr: listener.Addr().String(),
 	})
@@ -58,6 +59,9 @@ func runAsFollower() {
 	service.asking_price = lot.AskingPrice
 	service.starting_bid = lot.StartingBid
 	service.closing_time = lot.ClosingTime.AsTime().In(time.Local)
+
+	fmt.Println("I will start service!!!")
+	service.startService(listener)
 }
 
 // Establishes connection to a server.
@@ -245,14 +249,49 @@ func (auction *AuctionService) processBid(bid *proto.Bid) proto.StatusValue {
 	return proto.StatusValue_ACCEPTED
 }
 
+// Ping a node to see that it is still active.
 func (auction *AuctionService) Ping(ctx context.Context, msg *proto.Empty) (*proto.Empty, error) {
-	panic("Unimplemented")
+	return &proto.Empty{}, nil
 }
 
+// Register a follower node. If the leader is able to accept this, it will return a Lot message.
 func (auction *AuctionService) Register(ctx context.Context, msg *proto.Node) (*proto.Lot, error) {
-	panic("Unimplemented")
+	log.Printf("New follower node: %s\n", msg.Addr)
+	go auction.firstUpdate(msg.Addr)
+	return auction.GetLot(ctx, &proto.Empty{})
 }
 
+func (auction *AuctionService) firstUpdate(addr string) {
+	var err error
+	for i := 0; i < 3; i++ {
+		err = auction.updateFollower(addr)
+		if err == nil {
+			fmt.Printf("Successful first update: %s\n", addr)
+			auction.known_nodes = append(auction.known_nodes, addr)
+			return
+		}
+	}
+	fmt.Printf("FAILED first update: %s\n", addr)
+}
+
+func (auction *AuctionService) updateFollower(addr string) error {
+	conn := getConnectionToServer(addr)
+	defer conn.Close()
+	client := proto.NewAuctionClient(conn)
+	_, err := client.UpdateNode(ctx, &proto.NodeState{
+		TopBid:  auction.top_bid,
+		BidTime: auction.bid_time,
+		Bidders: auction.bidders,
+	})
+	return err
+}
+
+// Updates a follower node. The follower returns a confirmation when this has happened.
 func (auction *AuctionService) UpdateNode(ctx context.Context, msg *proto.NodeState) (*proto.Empty, error) {
-	panic("Unimplemented")
+	auction.bid_lock.Lock()
+	defer auction.bid_lock.Unlock()
+	auction.top_bid = msg.TopBid
+	auction.bid_time = msg.BidTime
+	auction.bidders = msg.Bidders
+	return &proto.Empty{}, nil
 }
