@@ -130,6 +130,7 @@ func (auction *AuctionService) GetAuctionStatus(ctx context.Context, msg *proto.
 func (auction *AuctionService) GetDiscovery(ctx context.Context, msg *proto.Empty) (*proto.Discovery, error) {
 	answer := &proto.Discovery{
 		IpAddresses: auction.known_nodes,
+		Leader:      "",
 	}
 	return answer, nil
 }
