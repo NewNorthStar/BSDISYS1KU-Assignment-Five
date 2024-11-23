@@ -1,6 +1,8 @@
 syntax = "proto3";
 option go_package = "example.com/auction/grpc/proto";
 
+import "google/protobuf/timestamp.proto";
+
 // API available at a front-end providing node. Should have discovery capabilities. 
 service Auction {
     // Forward a bid to the auction. Returns acknowledgement showing outcome of the bid.
@@ -22,7 +24,7 @@ service AuctionInternal {
     rpc UpdateNode(NodeState) returns (Empty);
 
     // Register a follower node. If the leader is able to accept this, it will return an empty message.
-    rpc Register(Node) returns (Empty);
+    rpc Register(Node) returns (Lot);
 
     // Ping a node to see that it is still active. 
     rpc Ping(Empty) returns (Empty);
@@ -44,6 +46,7 @@ message Lot {
     int64 asking_price = 3;
     int64 starting_bid = 4;
     int64 current_bid = 5;
+    google.protobuf.Timestamp closing_time = 6;
 }
 
 message Bid {

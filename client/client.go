@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	proto "example.com/auction/grpc"
 	"google.golang.org/grpc"
@@ -77,6 +78,7 @@ func getAndShowAuctionDetails(client proto.AuctionClient) {
 		log.Fatalf("client.GetAuctionStatus error: %v", err)
 	}
 	fmt.Printf("The item up for auction is '%s'. \nPrice currently %d,- from bidder #%d\n", lot.Name, ack.Amount, ack.BidderId)
+	fmt.Printf("The auction closes at %s\n", lot.ClosingTime.AsTime().In(time.Local).String())
 	if ack.Amount < lot.StartingBid {
 		fmt.Printf("The starting bid is %d,-\n", lot.StartingBid)
 	}

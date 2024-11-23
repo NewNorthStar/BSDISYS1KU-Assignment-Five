@@ -261,7 +261,7 @@ type AuctionInternalClient interface {
 	// Updates a follower node. The follower returns a confirmation when this has happened.
 	UpdateNode(ctx context.Context, in *NodeState, opts ...grpc.CallOption) (*Empty, error)
 	// Register a follower node. If the leader is able to accept this, it will return an empty message.
-	Register(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Empty, error)
+	Register(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Lot, error)
 	// Ping a node to see that it is still active.
 	Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 }
@@ -284,9 +284,9 @@ func (c *auctionInternalClient) UpdateNode(ctx context.Context, in *NodeState, o
 	return out, nil
 }
 
-func (c *auctionInternalClient) Register(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Empty, error) {
+func (c *auctionInternalClient) Register(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Lot, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Empty)
+	out := new(Lot)
 	err := c.cc.Invoke(ctx, AuctionInternal_Register_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -313,7 +313,7 @@ type AuctionInternalServer interface {
 	// Updates a follower node. The follower returns a confirmation when this has happened.
 	UpdateNode(context.Context, *NodeState) (*Empty, error)
 	// Register a follower node. If the leader is able to accept this, it will return an empty message.
-	Register(context.Context, *Node) (*Empty, error)
+	Register(context.Context, *Node) (*Lot, error)
 	// Ping a node to see that it is still active.
 	Ping(context.Context, *Empty) (*Empty, error)
 	mustEmbedUnimplementedAuctionInternalServer()
@@ -329,7 +329,7 @@ type UnimplementedAuctionInternalServer struct{}
 func (UnimplementedAuctionInternalServer) UpdateNode(context.Context, *NodeState) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateNode not implemented")
 }
-func (UnimplementedAuctionInternalServer) Register(context.Context, *Node) (*Empty, error) {
+func (UnimplementedAuctionInternalServer) Register(context.Context, *Node) (*Lot, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Register not implemented")
 }
 func (UnimplementedAuctionInternalServer) Ping(context.Context, *Empty) (*Empty, error) {

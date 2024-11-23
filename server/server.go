@@ -2,20 +2,43 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
+	"os"
 	"sync"
 	"time"
 
 	proto "example.com/auction/grpc"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func main() {
-	service := newAuctionService()
-	listener := listenOn("localhost:5050")
+/*
+Args[1] = My web socket.
 
+Args[2] (optional) = Leader to follow.
+*/
+func main() {
+	if len(os.Args) == 2 {
+		runAsLeader()
+	} else if len(os.Args) == 3 {
+		runAsFollower()
+	}
+
+	fmt.Println("*** Incorrect args ***")
+	os.Exit(1)
+}
+
+func runAsLeader() {
+	service := newAuctionService()
+	service.closing_time = time.Now().Add(time.Second * 120)
+	listener := listenOn(os.Args[1])
 	service.startService(listener)
+}
+
+func runAsFollower() {
+
 }
 
 /*
@@ -60,8 +83,6 @@ func newAuctionService() *AuctionService {
 		name:         "Course Book",
 		asking_price: 80,
 		starting_bid: 40,
-
-		closing_time: time.Now().Add(time.Second * 120),
 	}
 }
 
@@ -143,6 +164,7 @@ func (auction *AuctionService) GetLot(ctx context.Context, msg *proto.Empty) (*p
 		AskingPrice: auction.asking_price,
 		StartingBid: auction.starting_bid,
 		CurrentBid:  auction.top_bid.Amount,
+		ClosingTime: timestamppb.New(auction.closing_time),
 	}
 	return answer, nil
 }
