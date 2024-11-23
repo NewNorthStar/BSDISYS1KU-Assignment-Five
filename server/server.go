@@ -94,10 +94,21 @@ The returned BidderId shows who currently holds the top bid.
 */
 func (auction *AuctionService) GetAuctionStatus(ctx context.Context, msg *proto.Empty) (*proto.Ack, error) {
 	lead := auction.top_bid
+	var result proto.StatusValue
+	if time.Now().After(auction.closing_time) {
+		if auction.top_bid.BidderId != 0 {
+			result = proto.StatusValue_SOLD
+		} else {
+			result = proto.StatusValue_CLOSED
+		}
+	} else {
+		result = proto.StatusValue_IN_PROGRESS
+	}
+
 	answer := &proto.Ack{
 		Amount:   lead.Amount,
 		BidderId: lead.BidderId,
-		Result:   proto.StatusValue_IN_PROGRESS,
+		Result:   result,
 	}
 	return answer, nil
 }
@@ -128,11 +139,17 @@ Forward a bid to the auction. Returns acknowledgement showing outcome of the bid
 The returned BidderId allows the service to assign IDs to clients.
 */
 func (auction *AuctionService) PutBid(ctx context.Context, msg *proto.Bid) (*proto.Ack, error) {
+	if time.Now().After(auction.closing_time) { // If the auction is over, we instead return the auction status.
+		return auction.GetAuctionStatus(ctx, &proto.Empty{})
+	}
+
 	defer log.Printf("PutBid: Bid currently at %v\n", auction.top_bid)
+
 	if msg.BidderId == 0 {
 		auction.bidders++
 		msg.BidderId = auction.bidders
 	}
+
 	result := auction.processBid(msg)
 	answer := &proto.Ack{
 		Amount:   auction.top_bid.Amount,
