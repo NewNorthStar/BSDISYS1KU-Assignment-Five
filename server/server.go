@@ -244,3 +244,15 @@ func (auction *AuctionService) processBid(bid *proto.Bid) proto.StatusValue {
 	auction.top_bid = bid
 	return proto.StatusValue_ACCEPTED
 }
+
+func (auction *AuctionService) Ping(ctx context.Context, msg *proto.Empty) (*proto.Empty, error) {
+	panic("Unimplemented")
+}
+
+func (auction *AuctionService) Register(ctx context.Context, msg *proto.Node) (*proto.Lot, error) {
+	panic("Unimplemented")
+}
+
+func (auction *AuctionService) UpdateNode(ctx context.Context, msg *proto.NodeState) (*proto.Empty, error) {
+	panic("Unimplemented")
+}
