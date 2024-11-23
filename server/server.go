@@ -83,6 +83,12 @@ func (auction *AuctionService) startService(listener net.Listener) {
 			time.Sleep(2 * time.Second)
 		}
 		log.Printf("Auction was closed at %s\n", auction.closing_time.String())
+		if auction.top_bid.BidderId != 0 {
+			log.Printf("The item '%s' was sold to bidder '%d' for %d,-\n", auction.name, auction.top_bid.BidderId, auction.top_bid.Amount)
+		} else {
+			log.Printf("There were no bidders for the item '%s'\n", auction.name)
+		}
+
 	}()
 
 	grpcServer := grpc.NewServer()
