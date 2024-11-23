@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 
 	proto "example.com/auction/grpc"
 	"google.golang.org/grpc"
@@ -31,6 +32,8 @@ type AuctionService struct {
 	name         string
 	asking_price int64
 	starting_bid int64
+
+	closing_time time.Time
 }
 
 /*
@@ -50,6 +53,8 @@ func newAuctionService() *AuctionService {
 		name:         "Course Book",
 		asking_price: 80,
 		starting_bid: 40,
+
+		closing_time: time.Now().Add(time.Second * 120),
 	}
 }
 
@@ -123,6 +128,7 @@ Forward a bid to the auction. Returns acknowledgement showing outcome of the bid
 The returned BidderId allows the service to assign IDs to clients.
 */
 func (auction *AuctionService) PutBid(ctx context.Context, msg *proto.Bid) (*proto.Ack, error) {
+	defer log.Printf("PutBid: Bid currently at %v\n", auction.top_bid)
 	if msg.BidderId == 0 {
 		auction.bidders++
 		msg.BidderId = auction.bidders
