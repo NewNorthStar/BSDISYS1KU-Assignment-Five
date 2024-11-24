@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -278,7 +277,7 @@ func (auction *AuctionService) firstUpdate(addr string) {
 			return
 		}
 	}
-	fmt.Printf("FAILED first update on follower node: %s\n", addr)
+	log.Printf("FAILED first update on follower node: %s\n", addr)
 }
 
 func (auction *AuctionService) sendUpdateToFollower(addr string) error {
