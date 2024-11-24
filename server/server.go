@@ -34,23 +34,25 @@ func main() {
 }
 
 func runAsLeader() {
-	listener := listenOn(os.Args[1])
+	log.Println("Starting a new auction...")
+
 	service := newAuctionService()
+	service.listener = listenOn(os.Args[1])
 	service.closing_time = time.Now().Add(time.Second * 120)
-	service.startService(listener)
+	service.startService()
 }
 
 func runAsFollower() {
-	listener := listenOn(os.Args[1])
+	log.Println("Following an existing auction...")
 	service := newAuctionService()
+	service.listener = listenOn(os.Args[1])
 
 	conn := getConnectionToServer(os.Args[2])
 	defer conn.Close()
 	client := proto.NewAuctionClient(conn)
 
-	fmt.Println("I will register!!!")
 	lot, err := client.Register(ctx, &proto.Node{
-		Addr: listener.Addr().String(),
+		Addr: service.listener.Addr().String(),
 	})
 	if err != nil {
 		log.Fatalf("Replication error: %v\n", err)
@@ -60,8 +62,7 @@ func runAsFollower() {
 	service.starting_bid = lot.StartingBid
 	service.closing_time = lot.ClosingTime.AsTime().In(time.Local)
 
-	fmt.Println("I will start service!!!")
-	service.startService(listener)
+	service.startService()
 }
 
 // Establishes connection to a server.
@@ -83,6 +84,7 @@ If a new leader needs to be elected, the winner should be
 */
 type AuctionService struct {
 	proto.UnimplementedAuctionServer
+	listener net.Listener
 
 	known_nodes []string
 
@@ -128,8 +130,8 @@ func listenOn(address string) net.Listener {
 }
 
 // Connects and begins the auction service.
-func (auction *AuctionService) startService(listener net.Listener) {
-	auction.known_nodes = append(auction.known_nodes, listener.Addr().String()) // Makes address available to GetDiscovery RPC.
+func (auction *AuctionService) startService() {
+	auction.known_nodes = append(auction.known_nodes, auction.listener.Addr().String()) // Makes address available to GetDiscovery RPC.
 
 	go func() {
 		for time.Now().Before(auction.closing_time) {
@@ -146,8 +148,8 @@ func (auction *AuctionService) startService(listener net.Listener) {
 
 	grpcServer := grpc.NewServer()
 	proto.RegisterAuctionServer(grpcServer, auction)
-	log.Printf("Auction on at %s\n", listener.Addr().String())
-	err := grpcServer.Serve(listener)
+	log.Printf("Now ready at %s\n", auction.listener.Addr().String())
+	err := grpcServer.Serve(auction.listener)
 	if err != nil {
 		log.Fatalf("Service failure: %v\n", err)
 	}
@@ -264,17 +266,17 @@ func (auction *AuctionService) Register(ctx context.Context, msg *proto.Node) (*
 func (auction *AuctionService) firstUpdate(addr string) {
 	var err error
 	for i := 0; i < 3; i++ {
-		err = auction.updateFollower(addr)
+		err = auction.sendUpdateToFollower(addr)
 		if err == nil {
-			fmt.Printf("Successful first update: %s\n", addr)
+			fmt.Printf("Successful first update on follower node: %s\n", addr)
 			auction.known_nodes = append(auction.known_nodes, addr)
 			return
 		}
 	}
-	fmt.Printf("FAILED first update: %s\n", addr)
+	fmt.Printf("FAILED first update on follower node: %s\n", addr)
 }
 
-func (auction *AuctionService) updateFollower(addr string) error {
+func (auction *AuctionService) sendUpdateToFollower(addr string) error {
 	conn := getConnectionToServer(addr)
 	defer conn.Close()
 	client := proto.NewAuctionClient(conn)
@@ -282,6 +284,7 @@ func (auction *AuctionService) updateFollower(addr string) error {
 		TopBid:  auction.top_bid,
 		BidTime: auction.bid_time,
 		Bidders: auction.bidders,
+		Addr:    auction.listener.Addr().String(),
 	})
 	return err
 }
@@ -293,5 +296,6 @@ func (auction *AuctionService) UpdateNode(ctx context.Context, msg *proto.NodeSt
 	auction.top_bid = msg.TopBid
 	auction.bid_time = msg.BidTime
 	auction.bidders = msg.Bidders
+	log.Printf("Received update from %s\n", msg.Addr)
 	return &proto.Empty{}, nil
 }
