@@ -379,3 +379,126 @@ func (auction *AuctionService) UpdateNode(ctx context.Context, msg *proto.NodeSt
 	log.Printf("PutBid op#%d: Bid now at %d,- held by bidder #%d\n", auction.bid_time, auction.top_bid.Amount, auction.top_bid.BidderId)
 	return &proto.Empty{}, nil
 }
+
+/*
+Receives calls to elect a new leader.
+
+- Followers less qualified than the node on the ballot may answer with ACCEPT.
+
+- Followers MORE qualified than the node on the ballot must answer with REJECT, then hold its own election.
+*/
+func (auction *AuctionService) Election(ctx context.Context, ballot *proto.ElectionBallot) (*proto.ElectionAnswer, error) {
+	if auction.ballotIsBetterCandidate(ballot) {
+		return &proto.ElectionAnswer{
+			Result: proto.StatusValue_ACCEPTED,
+		}, nil
+	} else {
+		defer auction.holdElection()
+		return &proto.ElectionAnswer{
+			Result: proto.StatusValue_REJECTED,
+		}, nil
+	}
+}
+
+func (auction *AuctionService) holdElection() {
+	var group sync.WaitGroup
+	negativeAnswer := false
+	group_tasks := make([]func(), 0)
+	for _, addr := range auction.known_nodes {
+		if addr == auction.listener.Addr().String() {
+			continue
+		}
+		group.Add(1)
+		group_tasks = append(group_tasks, func() {
+			defer group.Done()
+			result, err := auction.sendElectionToFollower(addr)
+			if err != nil {
+				log.Printf("Error from addr %s: %s", addr, err.Error())
+				return
+			}
+			if result == proto.StatusValue_REJECTED {
+				negativeAnswer = true
+			}
+		})
+	}
+	for _, call := range group_tasks {
+		go call()
+	}
+	group.Wait()
+	if negativeAnswer {
+		log.Printf("Election lost to another node.")
+	}
+
+	auction.leadStatus = true
+	auction.announceCoordinator()
+}
+
+func (auction *AuctionService) sendElectionToFollower(addr string) (proto.StatusValue, error) {
+	conn := getConnectionToServer(addr)
+	defer conn.Close()
+	client := proto.NewAuctionClient(conn)
+	limitedContext, _ := context.WithTimeout(ctx, time.Millisecond*500)
+	answer, err := client.Election(limitedContext, &proto.ElectionBallot{
+		BidTime: auction.bid_time,
+		Addr:    auction.listener.Addr().String(),
+	})
+	return answer.Result, err
+}
+
+func (auction *AuctionService) ballotIsBetterCandidate(ballot *proto.ElectionBallot) bool {
+	if auction.bid_time != ballot.BidTime {
+		return auction.bid_time < ballot.BidTime
+	} else {
+		return auction.listener.Addr().String() > ballot.Addr
+	}
+}
+
+func (auction *AuctionService) Coordinator(ctx context.Context, ballot *proto.ElectionBallot) (*proto.Empty, error) {
+	if !auction.ballotIsBetterCandidate(ballot) {
+		return nil, status.Errorf(codes.PermissionDenied, "This node is better than the coordinator")
+	}
+	var err error
+	auction.leader, err = net.ResolveTCPAddr("tcp", ballot.Addr)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+	auction.leadStatus = false
+
+	return &proto.Empty{}, nil
+}
+
+func (auction *AuctionService) announceCoordinator() {
+	var group sync.WaitGroup
+	group_tasks := make([]func(), 0)
+	for _, addr := range auction.known_nodes {
+		if addr == auction.listener.Addr().String() {
+			continue
+		}
+		group.Add(1)
+		group_tasks = append(group_tasks, func() {
+			defer group.Done()
+			err := auction.sendCoordinatorToFollower(addr)
+			if err != nil {
+				log.Printf("Error from addr %s: %s", addr, err.Error())
+				return
+			}
+		})
+	}
+	for _, call := range group_tasks {
+		go call()
+	}
+	group.Wait()
+}
+
+func (auction *AuctionService) sendCoordinatorToFollower(addr string) error {
+	conn := getConnectionToServer(addr)
+	defer conn.Close()
+	client := proto.NewAuctionClient(conn)
+	limitedContext, _ := context.WithTimeout(ctx, time.Millisecond*500)
+	_, err := client.Coordinator(limitedContext, &proto.ElectionBallot{
+		BidTime: auction.bid_time,
+		Addr:    auction.listener.Addr().String(),
+	})
+	return err
+}
