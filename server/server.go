@@ -29,8 +29,7 @@ func main() {
 		runAsFollower()
 	}
 
-	fmt.Println("*** Incorrect args ***")
-	os.Exit(1)
+	log.Fatalln("*** Incorrect args ***")
 }
 
 func runAsLeader() {
@@ -38,16 +37,23 @@ func runAsLeader() {
 
 	service := newAuctionService()
 	service.listener = listenOn(os.Args[1])
+	service.isLeader = true
 	service.closing_time = time.Now().Add(time.Second * 120)
 	service.startService()
 }
 
 func runAsFollower() {
 	log.Println("Following an existing auction...")
+
 	service := newAuctionService()
 	service.listener = listenOn(os.Args[1])
+	service.isLeader = false
+	service.registerAsFollower(os.Args[2])
+	service.startService()
+}
 
-	conn := getConnectionToServer(os.Args[2])
+func (service *AuctionService) registerAsFollower(leaderAddr string) {
+	conn := getConnectionToServer(leaderAddr)
 	defer conn.Close()
 	client := proto.NewAuctionClient(conn)
 
@@ -61,8 +67,6 @@ func runAsFollower() {
 	service.asking_price = lot.AskingPrice
 	service.starting_bid = lot.StartingBid
 	service.closing_time = lot.ClosingTime.AsTime().In(time.Local)
-
-	service.startService()
 }
 
 // Establishes connection to a server.
@@ -87,6 +91,7 @@ type AuctionService struct {
 	listener net.Listener
 
 	known_nodes []string
+	isLeader    bool
 
 	top_bid  *proto.Bid
 	bid_time int64      // Lamport timestamp that increases with each top bid.
@@ -268,7 +273,7 @@ func (auction *AuctionService) firstUpdate(addr string) {
 	for i := 0; i < 3; i++ {
 		err = auction.sendUpdateToFollower(addr)
 		if err == nil {
-			fmt.Printf("Successful first update on follower node: %s\n", addr)
+			log.Printf("Successful first update on follower node: %s\n", addr)
 			auction.known_nodes = append(auction.known_nodes, addr)
 			return
 		}
