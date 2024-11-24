@@ -10,7 +10,9 @@ import (
 
 	proto "example.com/auction/grpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -34,21 +36,22 @@ func main() {
 func runAsLeader() {
 	log.Println("Starting a new auction...")
 
-	service := newAuctionService()
-	service.listener = listenOn(os.Args[1])
-	service.leadStatus = true
-	service.closing_time = time.Now().Add(time.Second * 120)
-	service.startService()
+	auction := newAuctionService()
+	auction.listener = listenOn(os.Args[1])
+	auction.leadStatus = true
+	auction.leader = auction.listener.Addr()
+	auction.closing_time = time.Now().Add(time.Second * 120)
+	auction.startService()
 }
 
 func runAsFollower() {
 	log.Println("Following an existing auction...")
 
-	service := newAuctionService()
-	service.listener = listenOn(os.Args[1])
-	service.leadStatus = false
-	service.registerAsFollower(os.Args[2])
-	service.startService()
+	auction := newAuctionService()
+	auction.listener = listenOn(os.Args[1])
+	auction.leadStatus = false
+	auction.registerAsFollower(os.Args[2])
+	auction.startService()
 }
 
 func (auction *AuctionService) registerAsFollower(leaderAddr string) {
@@ -65,7 +68,12 @@ func (auction *AuctionService) registerAsFollower(leaderAddr string) {
 	auction.name = lot.Name
 	auction.asking_price = lot.AskingPrice
 	auction.starting_bid = lot.StartingBid
+	auction.leader, err = net.ResolveTCPAddr("tcp", leaderAddr)
+	if err != nil {
+		log.Fatalf("Replication error: %v\n", err)
+	}
 	auction.closing_time = lot.ClosingTime.AsTime().In(time.Local)
+	log.Printf("Registered as follower with %s, awaiting first update...\n", leaderAddr)
 }
 
 // Establishes connection to a server.
@@ -91,6 +99,7 @@ type AuctionService struct {
 
 	known_nodes []string
 	leadStatus  bool
+	leader      net.Addr
 
 	top_bid  *proto.Bid
 	bid_time int64      // Lamport timestamp that increases with each top bid.
@@ -270,6 +279,13 @@ func (auction *AuctionService) Ping(ctx context.Context, msg *proto.Empty) (*pro
 
 // Register a follower node. If the leader is able to accept this, it will return a Lot message.
 func (auction *AuctionService) Register(ctx context.Context, msg *proto.Node) (*proto.Lot, error) {
+	if auction.isFollower() {
+		return nil, status.Errorf(codes.PermissionDenied, "Followers must register with the leader: %s", auction.leader)
+	}
+	if time.Now().After(auction.closing_time) { // If the auction is over, new nodes cannot register.
+		return nil, status.Errorf(codes.Unavailable, "This auction has closed.")
+	}
+
 	log.Printf("New follower node: %s\n", msg.Addr)
 	go auction.firstUpdate(msg.Addr)
 	return auction.GetLot(ctx, &proto.Empty{})
@@ -303,6 +319,10 @@ func (auction *AuctionService) sendUpdateToFollower(addr string) error {
 
 // Updates a follower node. The follower returns a confirmation when this has happened.
 func (auction *AuctionService) UpdateNode(ctx context.Context, msg *proto.NodeState) (*proto.Empty, error) {
+	if auction.isLeader() {
+		return nil, status.Errorf(codes.PermissionDenied, "This node is leading the auction")
+	}
+
 	auction.bid_lock.Lock()
 	defer auction.bid_lock.Unlock()
 	auction.top_bid = msg.TopBid
