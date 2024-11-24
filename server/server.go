@@ -40,7 +40,7 @@ func runAsLeader() {
 	auction.listener = listenOn(os.Args[1])
 	auction.leadStatus = true
 	auction.leader = auction.listener.Addr()
-	auction.closing_time = time.Now().Add(time.Second * 120)
+	auction.closing_time = time.Now().Add(time.Second * 300)
 	auction.startService()
 }
 
@@ -272,12 +272,17 @@ func (auction *AuctionService) updateAllFollowers() {
 func (auction *AuctionService) forwardBid(ctx context.Context, msg *proto.Bid) (*proto.Ack, error) {
 	conn, err := grpc.NewClient(auction.leader.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, status.Errorf(codes.Unavailable, "Error forwarding the bid: %s", err.Error())
+		return nil, status.Errorf(codes.Unavailable, "grpc.NewClient: %s", err.Error())
 	}
 	defer conn.Close()
 	forwardingClient := proto.NewAuctionClient(conn)
-	log.Printf("Forwarded bid from #%d\n", msg.BidderId)
-	return forwardingClient.PutBid(ctx, msg)
+	log.Printf("Forwarding bid from #%d\n", msg.BidderId)
+	response, err := forwardingClient.PutBid(ctx, msg)
+	if err != nil {
+		log.Printf("Leader unavailable, proposing election: %v", err)
+		go auction.holdElection()
+	}
+	return response, err
 }
 
 /*
@@ -401,6 +406,8 @@ func (auction *AuctionService) Election(ctx context.Context, ballot *proto.Elect
 }
 
 func (auction *AuctionService) holdElection() {
+	log.Printf("Election triggered...")
+
 	var group sync.WaitGroup
 	negativeAnswer := false
 	group_tasks := make([]func(), 0)
@@ -411,12 +418,12 @@ func (auction *AuctionService) holdElection() {
 		group.Add(1)
 		group_tasks = append(group_tasks, func() {
 			defer group.Done()
-			result, err := auction.sendElectionToFollower(addr)
+			answer, err := auction.sendElectionToFollower(addr)
 			if err != nil {
 				log.Printf("Error from addr %s: %s", addr, err.Error())
 				return
 			}
-			if result == proto.StatusValue_REJECTED {
+			if answer.Result == proto.StatusValue_REJECTED {
 				negativeAnswer = true
 			}
 		})
@@ -429,11 +436,14 @@ func (auction *AuctionService) holdElection() {
 		log.Printf("Election lost to another node.")
 	}
 
+	log.Printf("Won the election!")
 	auction.leadStatus = true
+	auction.leader = auction.listener.Addr()
 	auction.announceCoordinator()
+	auction.updateAllFollowers()
 }
 
-func (auction *AuctionService) sendElectionToFollower(addr string) (proto.StatusValue, error) {
+func (auction *AuctionService) sendElectionToFollower(addr string) (*proto.ElectionAnswer, error) {
 	conn := getConnectionToServer(addr)
 	defer conn.Close()
 	client := proto.NewAuctionClient(conn)
@@ -442,7 +452,7 @@ func (auction *AuctionService) sendElectionToFollower(addr string) (proto.Status
 		BidTime: auction.bid_time,
 		Addr:    auction.listener.Addr().String(),
 	})
-	return answer.Result, err
+	return answer, err
 }
 
 func (auction *AuctionService) ballotIsBetterCandidate(ballot *proto.ElectionBallot) bool {
