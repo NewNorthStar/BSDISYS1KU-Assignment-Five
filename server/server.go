@@ -447,7 +447,8 @@ func (auction *AuctionService) sendElectionToFollower(addr string) (*proto.Elect
 	conn := getConnectionToServer(addr)
 	defer conn.Close()
 	client := proto.NewAuctionClient(conn)
-	limitedContext, _ := context.WithTimeout(ctx, time.Millisecond*500)
+	limitedContext, cancel := context.WithTimeout(ctx, time.Millisecond*500)
+	defer cancel()
 	answer, err := client.Election(limitedContext, &proto.ElectionBallot{
 		BidTime: auction.bid_time,
 		Addr:    auction.listener.Addr().String(),
@@ -505,7 +506,8 @@ func (auction *AuctionService) sendCoordinatorToFollower(addr string) error {
 	conn := getConnectionToServer(addr)
 	defer conn.Close()
 	client := proto.NewAuctionClient(conn)
-	limitedContext, _ := context.WithTimeout(ctx, time.Millisecond*500)
+	limitedContext, cancel := context.WithTimeout(ctx, time.Millisecond*500)
+	defer cancel()
 	_, err := client.Coordinator(limitedContext, &proto.ElectionBallot{
 		BidTime: auction.bid_time,
 		Addr:    auction.listener.Addr().String(),
