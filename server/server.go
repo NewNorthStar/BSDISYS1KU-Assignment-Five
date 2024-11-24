@@ -205,8 +205,8 @@ func (auction *AuctionService) GetAuctionStatus(ctx context.Context, msg *proto.
 // Discover front-end service nodes for keeping contact with the auction. Returns discovery of node IP addresses.
 func (auction *AuctionService) GetDiscovery(ctx context.Context, msg *proto.Empty) (*proto.Discovery, error) {
 	answer := &proto.Discovery{
-		IpAddresses: auction.known_nodes,
-		Leader:      auction.leader.String(),
+		Others: auction.known_nodes,
+		Leader: auction.leader.String(),
 	}
 	return answer, nil
 }
@@ -250,7 +250,7 @@ func (auction *AuctionService) PutBid(ctx context.Context, msg *proto.Bid) (*pro
 	return answer, nil
 }
 
-func (auction *AuctionService) updateFollowersAfterBid() {
+func (auction *AuctionService) updateAllFollowers() {
 	var group sync.WaitGroup
 	group_tasks := make([]func(), 0)
 	for _, addr := range auction.known_nodes {
@@ -303,7 +303,7 @@ func (auction *AuctionService) processBid(bid *proto.Bid) proto.StatusValue {
 		bid.BidderId = auction.bidders
 	}
 	auction.top_bid = bid
-	auction.updateFollowersAfterBid()
+	auction.updateAllFollowers()
 	return proto.StatusValue_ACCEPTED
 }
 
@@ -333,6 +333,7 @@ func (auction *AuctionService) firstUpdate(addr string) {
 		if err == nil {
 			log.Printf("Successful first update on follower node: %s\n", addr)
 			auction.known_nodes = append(auction.known_nodes, addr)
+			auction.updateAllFollowers()
 			return
 		}
 	}
@@ -348,6 +349,10 @@ func (auction *AuctionService) sendUpdateToFollower(addr string) error {
 		BidTime: auction.bid_time,
 		Bidders: auction.bidders,
 		Addr:    auction.listener.Addr().String(),
+		Discovery: &proto.Discovery{
+			Others: auction.known_nodes,
+			Leader: auction.leader.String(),
+		},
 	})
 	return err
 }
@@ -363,6 +368,13 @@ func (auction *AuctionService) UpdateNode(ctx context.Context, msg *proto.NodeSt
 	auction.top_bid = msg.TopBid
 	auction.bid_time = msg.BidTime
 	auction.bidders = msg.Bidders
+	var err error
+	auction.leader, err = net.ResolveTCPAddr("tcp", msg.Discovery.Leader)
+	if err != nil {
+		log.Printf("Unable to resolve leader address %v\n", err)
+	}
+	auction.known_nodes = msg.Discovery.Others
+
 	log.Printf("Received update from %s\n", msg.Addr)
 	log.Printf("PutBid op#%d: Bid now at %d,- held by bidder #%d\n", auction.bid_time, auction.top_bid.Amount, auction.top_bid.BidderId)
 	return &proto.Empty{}, nil
