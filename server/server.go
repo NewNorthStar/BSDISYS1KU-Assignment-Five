@@ -36,7 +36,7 @@ func runAsLeader() {
 
 	service := newAuctionService()
 	service.listener = listenOn(os.Args[1])
-	service.isLeader = true
+	service.leadStatus = true
 	service.closing_time = time.Now().Add(time.Second * 120)
 	service.startService()
 }
@@ -46,26 +46,26 @@ func runAsFollower() {
 
 	service := newAuctionService()
 	service.listener = listenOn(os.Args[1])
-	service.isLeader = false
+	service.leadStatus = false
 	service.registerAsFollower(os.Args[2])
 	service.startService()
 }
 
-func (service *AuctionService) registerAsFollower(leaderAddr string) {
+func (auction *AuctionService) registerAsFollower(leaderAddr string) {
 	conn := getConnectionToServer(leaderAddr)
 	defer conn.Close()
 	client := proto.NewAuctionClient(conn)
 
 	lot, err := client.Register(ctx, &proto.Node{
-		Addr: service.listener.Addr().String(),
+		Addr: auction.listener.Addr().String(),
 	})
 	if err != nil {
 		log.Fatalf("Replication error: %v\n", err)
 	}
-	service.name = lot.Name
-	service.asking_price = lot.AskingPrice
-	service.starting_bid = lot.StartingBid
-	service.closing_time = lot.ClosingTime.AsTime().In(time.Local)
+	auction.name = lot.Name
+	auction.asking_price = lot.AskingPrice
+	auction.starting_bid = lot.StartingBid
+	auction.closing_time = lot.ClosingTime.AsTime().In(time.Local)
 }
 
 // Establishes connection to a server.
@@ -90,7 +90,7 @@ type AuctionService struct {
 	listener net.Listener
 
 	known_nodes []string
-	isLeader    bool
+	leadStatus  bool
 
 	top_bid  *proto.Bid
 	bid_time int64      // Lamport timestamp that increases with each top bid.
@@ -102,6 +102,14 @@ type AuctionService struct {
 	starting_bid int64
 
 	closing_time time.Time
+}
+
+func (auction *AuctionService) isLeader() bool {
+	return auction.leadStatus
+}
+
+func (auction *AuctionService) isFollower() bool {
+	return !auction.leadStatus
 }
 
 /*
