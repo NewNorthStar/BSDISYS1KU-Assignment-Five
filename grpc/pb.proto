@@ -67,6 +67,7 @@ enum StatusValue {
     IN_PROGRESS = 4;
     SOLD = 5;
     CLOSED = 6;
+    REJECTED = 7;
 }
 
 message Ack {
@@ -86,7 +87,7 @@ message ElectionBallot {
 }
 
 message ElectionAnswer {
-    bool reject = 1;
+    StatusValue result = 1;
 }
 
 message Empty {}
