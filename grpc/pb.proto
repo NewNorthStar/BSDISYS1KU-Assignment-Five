@@ -80,4 +80,13 @@ message Discovery {
     string leader = 2;
 }
 
+message ElectionBallot {
+    int64 bid_time = 1;
+    string addr = 2;
+}
+
+message ElectionAnswer {
+    bool reject = 1;
+}
+
 message Empty {}

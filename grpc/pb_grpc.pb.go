@@ -26,6 +26,8 @@ const (
 	Auction_UpdateNode_FullMethodName       = "/Auction/UpdateNode"
 	Auction_Register_FullMethodName         = "/Auction/Register"
 	Auction_Ping_FullMethodName             = "/Auction/Ping"
+	Auction_Election_FullMethodName         = "/Auction/Election"
+	Auction_Coordinator_FullMethodName      = "/Auction/Coordinator"
 )
 
 // AuctionClient is the client API for Auction service.
@@ -48,6 +50,10 @@ type AuctionClient interface {
 	Register(ctx context.Context, in *Node, opts ...grpc.CallOption) (*Lot, error)
 	// Ping a node to see that it is still active.
 	Ping(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
+	// Call an election to elect a leader.
+	Election(ctx context.Context, in *ElectionBallot, opts ...grpc.CallOption) (*ElectionAnswer, error)
+	// Declare yourself as the new leader.
+	Coordinator(ctx context.Context, in *ElectionBallot, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type auctionClient struct {
@@ -128,6 +134,26 @@ func (c *auctionClient) Ping(ctx context.Context, in *Empty, opts ...grpc.CallOp
 	return out, nil
 }
 
+func (c *auctionClient) Election(ctx context.Context, in *ElectionBallot, opts ...grpc.CallOption) (*ElectionAnswer, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ElectionAnswer)
+	err := c.cc.Invoke(ctx, Auction_Election_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *auctionClient) Coordinator(ctx context.Context, in *ElectionBallot, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, Auction_Coordinator_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuctionServer is the server API for Auction service.
 // All implementations must embed UnimplementedAuctionServer
 // for forward compatibility.
@@ -148,6 +174,10 @@ type AuctionServer interface {
 	Register(context.Context, *Node) (*Lot, error)
 	// Ping a node to see that it is still active.
 	Ping(context.Context, *Empty) (*Empty, error)
+	// Call an election to elect a leader.
+	Election(context.Context, *ElectionBallot) (*ElectionAnswer, error)
+	// Declare yourself as the new leader.
+	Coordinator(context.Context, *ElectionBallot) (*Empty, error)
 	mustEmbedUnimplementedAuctionServer()
 }
 
@@ -178,6 +208,12 @@ func (UnimplementedAuctionServer) Register(context.Context, *Node) (*Lot, error)
 }
 func (UnimplementedAuctionServer) Ping(context.Context, *Empty) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
+func (UnimplementedAuctionServer) Election(context.Context, *ElectionBallot) (*ElectionAnswer, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Election not implemented")
+}
+func (UnimplementedAuctionServer) Coordinator(context.Context, *ElectionBallot) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Coordinator not implemented")
 }
 func (UnimplementedAuctionServer) mustEmbedUnimplementedAuctionServer() {}
 func (UnimplementedAuctionServer) testEmbeddedByValue()                 {}
@@ -326,6 +362,42 @@ func _Auction_Ping_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Auction_Election_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ElectionBallot)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServer).Election(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auction_Election_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServer).Election(ctx, req.(*ElectionBallot))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Auction_Coordinator_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ElectionBallot)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServer).Coordinator(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auction_Coordinator_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServer).Coordinator(ctx, req.(*ElectionBallot))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Auction_ServiceDesc is the grpc.ServiceDesc for Auction service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -360,6 +432,14 @@ var Auction_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Ping",
 			Handler:    _Auction_Ping_Handler,
+		},
+		{
+			MethodName: "Election",
+			Handler:    _Auction_Election_Handler,
+		},
+		{
+			MethodName: "Coordinator",
+			Handler:    _Auction_Coordinator_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
