@@ -246,7 +246,27 @@ func (auction *AuctionService) PutBid(ctx context.Context, msg *proto.Bid) (*pro
 		Result:   result,
 		BidderId: msg.BidderId,
 	}
+
 	return answer, nil
+}
+
+func (auction *AuctionService) updateFollowersAfterBid() {
+	var group sync.WaitGroup
+	group_tasks := make([]func(), 0)
+	for _, addr := range auction.known_nodes {
+		if addr == auction.listener.Addr().String() {
+			continue
+		}
+		group.Add(1)
+		group_tasks = append(group_tasks, func() {
+			defer group.Done()
+			auction.sendUpdateToFollower(addr)
+		})
+	}
+	for _, call := range group_tasks {
+		go call()
+	}
+	group.Wait()
 }
 
 func (auction *AuctionService) forwardBid(ctx context.Context, msg *proto.Bid) (*proto.Ack, error) {
@@ -283,6 +303,7 @@ func (auction *AuctionService) processBid(bid *proto.Bid) proto.StatusValue {
 		bid.BidderId = auction.bidders
 	}
 	auction.top_bid = bid
+	auction.updateFollowersAfterBid()
 	return proto.StatusValue_ACCEPTED
 }
 
@@ -343,5 +364,6 @@ func (auction *AuctionService) UpdateNode(ctx context.Context, msg *proto.NodeSt
 	auction.bid_time = msg.BidTime
 	auction.bidders = msg.Bidders
 	log.Printf("Received update from %s\n", msg.Addr)
+	log.Printf("PutBid op#%d: Bid now at %d,- held by bidder #%d\n", auction.bid_time, auction.top_bid.Amount, auction.top_bid.BidderId)
 	return &proto.Empty{}, nil
 }
