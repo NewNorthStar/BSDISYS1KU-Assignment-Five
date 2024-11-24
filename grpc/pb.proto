@@ -25,6 +25,12 @@ service Auction {
 
     // Ping a node to see that it is still active. 
     rpc Ping(Empty) returns (Empty);
+
+    // Call an election to elect a leader.
+    rpc Election(ElectionBallot) returns (ElectionAnswer);
+
+    // Declare yourself as the new leader.
+    rpc Coordinator(ElectionBallot) returns (Empty);
 }
 
 message Node {
