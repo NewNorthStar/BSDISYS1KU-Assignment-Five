@@ -206,7 +206,7 @@ func (auction *AuctionService) GetAuctionStatus(ctx context.Context, msg *proto.
 func (auction *AuctionService) GetDiscovery(ctx context.Context, msg *proto.Empty) (*proto.Discovery, error) {
 	answer := &proto.Discovery{
 		IpAddresses: auction.known_nodes,
-		Leader:      "",
+		Leader:      auction.leader.String(),
 	}
 	return answer, nil
 }
@@ -233,6 +233,9 @@ func (auction *AuctionService) PutBid(ctx context.Context, msg *proto.Bid) (*pro
 	if time.Now().After(auction.closing_time) { // If the auction is over, we instead return the auction status.
 		return auction.GetAuctionStatus(ctx, &proto.Empty{})
 	}
+	if auction.isFollower() {
+		return auction.forwardBid(ctx, msg)
+	}
 
 	result := auction.processBid(msg)
 
@@ -244,6 +247,17 @@ func (auction *AuctionService) PutBid(ctx context.Context, msg *proto.Bid) (*pro
 		BidderId: msg.BidderId,
 	}
 	return answer, nil
+}
+
+func (auction *AuctionService) forwardBid(ctx context.Context, msg *proto.Bid) (*proto.Ack, error) {
+	conn, err := grpc.NewClient(auction.leader.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, status.Errorf(codes.Unavailable, "Error forwarding the bid: %s", err.Error())
+	}
+	defer conn.Close()
+	forwardingClient := proto.NewAuctionClient(conn)
+	log.Printf("Forwarded bid from #%d\n", msg.BidderId)
+	return forwardingClient.PutBid(ctx, msg)
 }
 
 /*
