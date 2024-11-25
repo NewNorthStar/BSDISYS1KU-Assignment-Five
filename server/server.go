@@ -89,10 +89,10 @@ An instance can lead an auction, or follow an auction.
 type AuctionService struct {
 	proto.UnimplementedAuctionServer
 
-	listener    net.Listener // Network listener for this instance.
-	known_nodes []string     // List of known IP addresses to the auction.
-	lead_status bool         // Set to true when instance is leading.
-	leader      net.Addr     // Leader network end-point for bid forwarding.
+	listener    net.Listener    // Network listener for this instance.
+	known_nodes map[string]bool // Set of known IP addresses to the auction.
+	lead_status bool            // Set to true when instance is leading.
+	leader      net.Addr        // Leader network end-point for bid forwarding.
 
 	bid_lock sync.Mutex // The state of bidding is protected by a mutex.
 	top_bid  *proto.Bid
@@ -113,7 +113,7 @@ Hardcoded for selling a 'course book'. :)
 */
 func newAuctionService() *AuctionService {
 	return &AuctionService{
-		known_nodes: make([]string, 0),
+		known_nodes: make(map[string]bool),
 		top_bid: &proto.Bid{
 			Amount:   0,
 			BidderId: 0,
@@ -145,7 +145,7 @@ func (auction *AuctionService) isFollower() bool {
 Starts the AuctionService server. Always called by node starting functions.
 */
 func (auction *AuctionService) startService() {
-	auction.known_nodes = append(auction.known_nodes, auction.listener.Addr().String()) // Makes address available to GetDiscovery RPC.
+	auction.known_nodes[auction.listener.Addr().String()] = true // Makes address available to GetDiscovery RPC.
 
 	go auction.closingCallRoutine()
 
@@ -257,7 +257,7 @@ Called after a bid has been placed.
 func (auction *AuctionService) updateAllFollowers() {
 	var group sync.WaitGroup
 	group_tasks := make([]func(), 0)
-	for _, addr := range auction.known_nodes {
+	for addr := range auction.known_nodes {
 		if addr == auction.listener.Addr().String() {
 			continue
 		}
@@ -286,7 +286,7 @@ func (auction *AuctionService) firstUpdate(addr string) {
 		err = auction.sendUpdateToFollower(addr)
 		if err == nil {
 			log.Printf("Successful first update on follower node: %s\n", addr)
-			auction.known_nodes = append(auction.known_nodes, addr)
+			auction.known_nodes[addr] = true
 			auction.updateAllFollowers()
 			return
 		}
@@ -307,11 +307,22 @@ func (auction *AuctionService) sendUpdateToFollower(addr string) error {
 		Bidders: auction.bidders,
 		Addr:    auction.listener.Addr().String(),
 		Discovery: &proto.Discovery{
-			Others: auction.known_nodes,
+			Others: keys(auction.known_nodes),
 			Leader: auction.leader.String(),
 		},
 	})
 	return err
+}
+
+func keys(m map[string]bool) []string {
+	s := make([]string, 0, len(m))
+	for key, ok := range m {
+		if ok {
+			s = append(s, key)
+		}
+	}
+
+	return s
 }
 
 /*
@@ -325,7 +336,7 @@ func (auction *AuctionService) holdElection() {
 	var group sync.WaitGroup
 	negativeAnswer := false
 	group_tasks := make([]func(), 0)
-	for _, addr := range auction.known_nodes {
+	for addr := range auction.known_nodes {
 		if addr == auction.listener.Addr().String() {
 			continue
 		}
@@ -390,7 +401,7 @@ Declares election victory to all nodes.
 func (auction *AuctionService) announceCoordinator() {
 	var group sync.WaitGroup
 	group_tasks := make([]func(), 0)
-	for _, addr := range auction.known_nodes {
+	for addr := range auction.known_nodes {
 		if addr == auction.listener.Addr().String() {
 			continue
 		}
@@ -507,7 +518,7 @@ Returns the leader IP address "Leader", and a list of known endpoints "Others".
 */
 func (auction *AuctionService) GetDiscovery(ctx context.Context, msg *proto.Empty) (*proto.Discovery, error) {
 	answer := &proto.Discovery{
-		Others: auction.known_nodes,
+		Others: keys(auction.known_nodes),
 		Leader: auction.leader.String(),
 	}
 	return answer, nil
@@ -533,7 +544,10 @@ func (auction *AuctionService) UpdateNode(ctx context.Context, msg *proto.NodeSt
 	if err != nil {
 		log.Printf("Unable to resolve leader address %v\n", err)
 	}
-	auction.known_nodes = msg.Discovery.Others
+	auction.known_nodes = make(map[string]bool)
+	for _, addr := range msg.Discovery.Others {
+		auction.known_nodes[addr] = true
+	}
 
 	log.Printf("Received update from %s\n", msg.Addr)
 	log.Printf("PutBid op#%d: Bid now at %d,- held by bidder #%d\n", auction.bid_time, auction.top_bid.Amount, auction.top_bid.BidderId)
