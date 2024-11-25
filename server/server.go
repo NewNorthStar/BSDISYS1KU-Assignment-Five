@@ -18,42 +18,58 @@ import (
 
 var ctx context.Context = context.Background()
 
-/*
-Args[1] = My web socket.
+// Sets the closing time of the auction from time of creation.
+const AUCTION_DURATION = time.Second * 120
 
-Args[2] (optional) = Leader to follow.
+/*
+Args[1] = My endpoint to serve on.
+
+Args[2] (optional) = Network endpoint of leader.
 */
 func main() {
 	if len(os.Args) == 2 {
-		runAsLeader()
+		runAsLeader(os.Args[1])
 	} else if len(os.Args) == 3 {
-		runAsFollower()
+		runAsFollower(os.Args[1], os.Args[2])
 	}
 
 	log.Fatalln("*** Incorrect args ***")
 }
 
-func runAsLeader() {
+/*
+Start this node as a new auction.
+*/
+func runAsLeader(addr string) {
 	log.Println("Starting a new auction...")
 
 	auction := newAuctionService()
-	auction.listener = listenOn(os.Args[1])
-	auction.leadStatus = true
+	auction.listener = listenOn(addr)
+	auction.lead_status = true
 	auction.leader = auction.listener.Addr()
-	auction.closing_time = time.Now().Add(time.Second * 300)
+	auction.closing_time = time.Now().Add(AUCTION_DURATION)
 	auction.startService()
 }
 
-func runAsFollower() {
-	log.Println("Following an existing auction...")
+/*
+Connect this node to an existing auction.
+*/
+func runAsFollower(addr, leaderAddr string) {
+	log.Println("Connecting to existing auction...")
 
 	auction := newAuctionService()
-	auction.listener = listenOn(os.Args[1])
-	auction.leadStatus = false
-	auction.registerAsFollower(os.Args[2])
+	auction.listener = listenOn(addr)
+	auction.lead_status = false
+	auction.registerAsFollower(leaderAddr)
 	auction.startService()
 }
 
+/*
+Registers receiver as a follower with the existing auction.
+
+Obtains the information necessary to replicate the auction
+and signals to the auction leader, that it should regularly
+update this follower.
+*/
 func (auction *AuctionService) registerAsFollower(leaderAddr string) {
 	conn := getConnectionToServer(leaderAddr)
 	defer conn.Close()
@@ -63,67 +79,71 @@ func (auction *AuctionService) registerAsFollower(leaderAddr string) {
 		Addr: auction.listener.Addr().String(),
 	})
 	if err != nil {
-		log.Fatalf("Replication error: %v\n", err)
+		log.Fatalf("Unable to register: %v\n", err)
 	}
-	auction.name = lot.Name
+	auction.item_name = lot.Name
 	auction.asking_price = lot.AskingPrice
 	auction.starting_bid = lot.StartingBid
 	auction.leader, err = net.ResolveTCPAddr("tcp", leaderAddr)
 	if err != nil {
-		log.Fatalf("Replication error: %v\n", err)
+		log.Fatalf("Unable to resolve address: %v\n", err)
 	}
 	auction.closing_time = lot.ClosingTime.AsTime().In(time.Local)
-	log.Printf("Registered as follower with %s, awaiting first update...\n", leaderAddr)
+	log.Printf("Registered as follower with %s. Now awaiting first update...\n", leaderAddr)
 }
 
 // Establishes connection to a server.
 func getConnectionToServer(addr string) *grpc.ClientConn {
 	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("getConnectionToServer error: %v", err)
+		log.Fatalf("Unable to connect to service: %v", err)
 	}
 	return conn
 }
 
 /*
-Auction nodes either conduct the auction as the leader,
-or follow the auction for redundancy.
+Contains the data necessary to conduct an auction.
 
-Auction nodes should be comparable by logical time.
-If a new leader needs to be elected, the winner should be
-(among) the most up-to-date.
+An instance can lead an auction, or follow an auction.
 */
 type AuctionService struct {
 	proto.UnimplementedAuctionServer
-	listener net.Listener
 
-	known_nodes []string
-	leadStatus  bool
-	leader      net.Addr
+	listener    net.Listener // Network listener for this instance.
+	known_nodes []string     // List of known IP addresses to the auction.
+	lead_status bool         // Set to true when instance is leading.
+	leader      net.Addr     // Leader network end-point for bid forwarding.
 
+	bid_lock sync.Mutex // The state of bidding is protected by a mutex.
 	top_bid  *proto.Bid
-	bid_time int64      // Lamport timestamp that increases with each top bid.
-	bid_lock sync.Mutex // Controls access to bid.
-	bidders  int64
+	bid_time int64 // Lamport timestamp that increases with each top bid.
+	bidders  int64 // Count of bidders for ID assignment.
 
-	name         string
+	item_name    string
 	asking_price int64
 	starting_bid int64
 
 	closing_time time.Time
 }
 
+/*
+True when receiver is a leader.
+*/
 func (auction *AuctionService) isLeader() bool {
-	return auction.leadStatus
+	return auction.lead_status
 }
 
+/*
+True when receiver is a follower.
+*/
 func (auction *AuctionService) isFollower() bool {
-	return !auction.leadStatus
+	return !auction.lead_status
 }
 
 /*
 Creates and returns an auction struct.
-Simply hardcoded to be auctioning a course book.
+
+Hardcoded for selling a 'course book'. :)
 */
 func newAuctionService() *AuctionService {
 	return &AuctionService{
@@ -135,7 +155,7 @@ func newAuctionService() *AuctionService {
 		bid_time: 0,
 		bidders:  0,
 
-		name:         "Course Book",
+		item_name:    "Course Book",
 		asking_price: 80,
 		starting_bid: 40,
 	}
@@ -145,27 +165,18 @@ func newAuctionService() *AuctionService {
 func listenOn(address string) net.Listener {
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		log.Fatalf("failed to listen: %v\n", err)
+		log.Fatalf("Failed to obtain TCP listener: %v\n", err)
 	}
 	return listener
 }
 
-// Connects and begins the auction service.
+/*
+Starts the AuctionService server. Always called by node starting functions.
+*/
 func (auction *AuctionService) startService() {
 	auction.known_nodes = append(auction.known_nodes, auction.listener.Addr().String()) // Makes address available to GetDiscovery RPC.
 
-	go func() {
-		for time.Now().Before(auction.closing_time) {
-			time.Sleep(2 * time.Second)
-		}
-		log.Printf("Auction was closed at %s\n", auction.closing_time.String())
-		if auction.top_bid.BidderId != 0 {
-			log.Printf("The item '%s' was sold to bidder #%d for %d,-\n", auction.name, auction.top_bid.BidderId, auction.top_bid.Amount)
-		} else {
-			log.Printf("There were no bidders for the item '%s'\n", auction.name)
-		}
-
-	}()
+	go auction.closingCallRoutine()
 
 	grpcServer := grpc.NewServer()
 	proto.RegisterAuctionServer(grpcServer, auction)
@@ -177,9 +188,24 @@ func (auction *AuctionService) startService() {
 }
 
 /*
-Get the status of the auction. Returns acknowledgement showing the current auction state.
+Call as goroutine. Logs the auction outcome after closing time.
+*/
+func (auction *AuctionService) closingCallRoutine() {
+	for time.Now().Before(auction.closing_time) {
+		time.Sleep(2 * time.Second)
+	}
+	log.Printf("Auction was closed at %s\n", auction.closing_time.String())
+	if auction.top_bid.BidderId != 0 {
+		log.Printf("The item '%s' was sold to bidder #%d for %d,-\n", auction.item_name, auction.top_bid.BidderId, auction.top_bid.Amount)
+	} else {
+		log.Printf("There were no bidders for the item '%s'\n", auction.item_name)
+	}
+}
 
-The returned BidderId shows who currently holds the top bid.
+/*
+gRPC method.
+
+Get the status of the auction. The returned Ack message shows who currently holds the top bid.
 */
 func (auction *AuctionService) GetAuctionStatus(ctx context.Context, msg *proto.Empty) (*proto.Ack, error) {
 	lead := auction.top_bid
@@ -202,7 +228,11 @@ func (auction *AuctionService) GetAuctionStatus(ctx context.Context, msg *proto.
 	return answer, nil
 }
 
-// Discover front-end service nodes for keeping contact with the auction. Returns discovery of node IP addresses.
+/*
+gRPC method.
+
+Returns the leader IP address "Leader", and a list of known endpoints "Others".
+*/
 func (auction *AuctionService) GetDiscovery(ctx context.Context, msg *proto.Empty) (*proto.Discovery, error) {
 	answer := &proto.Discovery{
 		Others: auction.known_nodes,
@@ -211,11 +241,15 @@ func (auction *AuctionService) GetDiscovery(ctx context.Context, msg *proto.Empt
 	return answer, nil
 }
 
-// Get details on the item up for auction. Returns lot message with details.
+/*
+gRPC method.
+
+Returns a message with generic auction details.
+*/
 func (auction *AuctionService) GetLot(ctx context.Context, msg *proto.Empty) (*proto.Lot, error) {
 	answer := &proto.Lot{
 		Id:          1,
-		Name:        auction.name,
+		Name:        auction.item_name,
 		AskingPrice: auction.asking_price,
 		StartingBid: auction.starting_bid,
 		CurrentBid:  auction.top_bid.Amount,
@@ -225,9 +259,12 @@ func (auction *AuctionService) GetLot(ctx context.Context, msg *proto.Empty) (*p
 }
 
 /*
-Forward a bid to the auction. Returns acknowledgement showing outcome of the bid.
+gRPC method.
 
-The returned BidderId allows the service to assign IDs to clients.
+Forward a bid to the auction. Returns acknowledgement showing outcome of the bid.
+Calls with bid ID '0' will register the bidder and return a new ID.
+
+Followers will forward the bid to the leader. This may fail and trigger an election.
 */
 func (auction *AuctionService) PutBid(ctx context.Context, msg *proto.Bid) (*proto.Ack, error) {
 	if time.Now().After(auction.closing_time) { // If the auction is over, we instead return the auction status.
@@ -250,25 +287,10 @@ func (auction *AuctionService) PutBid(ctx context.Context, msg *proto.Bid) (*pro
 	return answer, nil
 }
 
-func (auction *AuctionService) updateAllFollowers() {
-	var group sync.WaitGroup
-	group_tasks := make([]func(), 0)
-	for _, addr := range auction.known_nodes {
-		if addr == auction.listener.Addr().String() {
-			continue
-		}
-		group.Add(1)
-		group_tasks = append(group_tasks, func() {
-			defer group.Done()
-			auction.sendUpdateToFollower(addr)
-		})
-	}
-	for _, call := range group_tasks {
-		go call()
-	}
-	group.Wait()
-}
-
+/*
+Followers use this method to place a bid with the leader.
+Uses a temporary client to forward the bid.
+*/
 func (auction *AuctionService) forwardBid(ctx context.Context, msg *proto.Bid) (*proto.Ack, error) {
 	conn, err := grpc.NewClient(auction.leader.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -312,7 +334,35 @@ func (auction *AuctionService) processBid(bid *proto.Bid) proto.StatusValue {
 	return proto.StatusValue_ACCEPTED
 }
 
-// Ping a node to see that it is still active.
+/*
+Method called by the leader only. Updates all followers.
+
+Called after a bid has been placed.
+*/
+func (auction *AuctionService) updateAllFollowers() {
+	var group sync.WaitGroup
+	group_tasks := make([]func(), 0)
+	for _, addr := range auction.known_nodes {
+		if addr == auction.listener.Addr().String() {
+			continue
+		}
+		group.Add(1)
+		group_tasks = append(group_tasks, func() {
+			defer group.Done()
+			auction.sendUpdateToFollower(addr)
+		})
+	}
+	for _, call := range group_tasks {
+		go call()
+	}
+	group.Wait()
+}
+
+/*
+gRPC method.
+
+Ping a node to see that it is still active.
+*/
 func (auction *AuctionService) Ping(ctx context.Context, msg *proto.Empty) (*proto.Empty, error) {
 	return &proto.Empty{}, nil
 }
@@ -331,6 +381,13 @@ func (auction *AuctionService) Register(ctx context.Context, msg *proto.Node) (*
 	return auction.GetLot(ctx, &proto.Empty{})
 }
 
+/*
+Called by leader to update a newly registered follower node.
+
+If successful, all nodes will be updated to discover the new follower.
+On failure, the follower will not be added to the auction.
+This outcome is logged.
+*/
 func (auction *AuctionService) firstUpdate(addr string) {
 	var err error
 	for i := 0; i < 3; i++ {
@@ -345,6 +402,9 @@ func (auction *AuctionService) firstUpdate(addr string) {
 	log.Printf("FAILED first update on follower node: %s\n", addr)
 }
 
+/*
+Updates a single follower node using a temporary client instance.
+*/
 func (auction *AuctionService) sendUpdateToFollower(addr string) error {
 	conn := getConnectionToServer(addr)
 	defer conn.Close()
@@ -362,7 +422,11 @@ func (auction *AuctionService) sendUpdateToFollower(addr string) error {
 	return err
 }
 
-// Updates a follower node. The follower returns a confirmation when this has happened.
+/*
+gRPC method.
+
+Updates the follower node with new auction data. Returns an error if the node is a leader.
+*/
 func (auction *AuctionService) UpdateNode(ctx context.Context, msg *proto.NodeState) (*proto.Empty, error) {
 	if auction.isLeader() {
 		return nil, status.Errorf(codes.PermissionDenied, "This node is leading the auction")
@@ -386,11 +450,13 @@ func (auction *AuctionService) UpdateNode(ctx context.Context, msg *proto.NodeSt
 }
 
 /*
-Receives calls to elect a new leader.
+gRPC method.
 
-- Followers less qualified than the node on the ballot may answer with ACCEPT.
+Elect a new leader.
 
-- Followers MORE qualified than the node on the ballot must answer with REJECT, then hold its own election.
+- Followers LESS qualified than the node on the ballot may answer with ACCEPT. An error is treated as an ACCEPT.
+
+- Followers MORE qualified than the node on the ballot MUST answer with REJECT. The follower must then hold its own election.
 */
 func (auction *AuctionService) Election(ctx context.Context, ballot *proto.ElectionBallot) (*proto.ElectionAnswer, error) {
 	if auction.ballotIsBetterCandidate(ballot) {
@@ -405,6 +471,11 @@ func (auction *AuctionService) Election(ctx context.Context, ballot *proto.Elect
 	}
 }
 
+/*
+Hold an election among follower nodes.
+
+Called when a follower determines that the leader is unreachable.
+*/
 func (auction *AuctionService) holdElection() {
 	log.Printf("Election triggered...")
 
@@ -437,12 +508,15 @@ func (auction *AuctionService) holdElection() {
 	}
 
 	log.Printf("Won the election!")
-	auction.leadStatus = true
+	auction.lead_status = true
 	auction.leader = auction.listener.Addr()
 	auction.announceCoordinator()
 	auction.updateAllFollowers()
 }
 
+/*
+Sends an Election call to a single node.
+*/
 func (auction *AuctionService) sendElectionToFollower(addr string) (*proto.ElectionAnswer, error) {
 	conn := getConnectionToServer(addr)
 	defer conn.Close()
@@ -456,6 +530,9 @@ func (auction *AuctionService) sendElectionToFollower(addr string) (*proto.Elect
 	return answer, err
 }
 
+/*
+Comparison method for the incoming election ballot vs the receiver.
+*/
 func (auction *AuctionService) ballotIsBetterCandidate(ballot *proto.ElectionBallot) bool {
 	if auction.bid_time != ballot.BidTime {
 		return auction.bid_time < ballot.BidTime
@@ -464,21 +541,30 @@ func (auction *AuctionService) ballotIsBetterCandidate(ballot *proto.ElectionBal
 	}
 }
 
+/*
+gRPC method.
+
+Called by the winner of an election. All nodes resolve the new leader address. Leaders receiving this call will step down.
+*/
 func (auction *AuctionService) Coordinator(ctx context.Context, ballot *proto.ElectionBallot) (*proto.Empty, error) {
 	if !auction.ballotIsBetterCandidate(ballot) {
 		return nil, status.Errorf(codes.PermissionDenied, "This node is better than the coordinator")
 	}
+	auction.lead_status = false
 	var err error
 	auction.leader, err = net.ResolveTCPAddr("tcp", ballot.Addr)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
-	auction.leadStatus = false
+	auction.lead_status = false
 
 	return &proto.Empty{}, nil
 }
 
+/*
+Declares election victory to all nodes.
+*/
 func (auction *AuctionService) announceCoordinator() {
 	var group sync.WaitGroup
 	group_tasks := make([]func(), 0)
@@ -502,6 +588,9 @@ func (auction *AuctionService) announceCoordinator() {
 	group.Wait()
 }
 
+/*
+Sends a Coordinator call to a single node.
+*/
 func (auction *AuctionService) sendCoordinatorToFollower(addr string) error {
 	conn := getConnectionToServer(addr)
 	defer conn.Close()
