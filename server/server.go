@@ -19,7 +19,7 @@ import (
 var ctx context.Context = context.Background()
 
 // Sets the closing time of the auction from time of creation.
-const AUCTION_DURATION = time.Second * 120
+const AUCTION_DURATION = time.Second * 300
 
 /*
 Args[1] = My endpoint to serve on.
@@ -27,6 +27,14 @@ Args[1] = My endpoint to serve on.
 Args[2] (optional) = Network endpoint of leader.
 */
 func main() {
+	/*
+		file, err := os.Create(strconv.FormatInt(time.Now().Unix(), 10) + ".txt")
+		if err != nil {
+			log.Fatalln(err.Error())
+		}
+		log.SetOutput(file)
+	*/
+
 	if len(os.Args) == 2 {
 		runAsLeader(os.Args[1])
 	} else if len(os.Args) == 3 {
@@ -152,6 +160,7 @@ func (auction *AuctionService) startService() {
 	grpcServer := grpc.NewServer()
 	proto.RegisterAuctionServer(grpcServer, auction)
 	log.Printf("Now ready at %s\n", auction.listener.Addr().String())
+	defer log.Println("*** SHUTDOWN ***")
 	err := grpcServer.Serve(auction.listener)
 	if err != nil {
 		log.Fatalf("Service failure: %v\n", err)
