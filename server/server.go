@@ -207,6 +207,17 @@ Followers use this method to place a bid with the leader.
 Uses a temporary client to forward the bid.
 */
 func (auction *AuctionService) forwardBid(ctx context.Context, msg *proto.Bid) (*proto.Ack, error) {
+	response, err := auction.forwardAttempt(ctx, msg)
+	if err != nil {
+		log.Printf("Leader unavailable, proposing election: %v", err)
+		auction.holdElection()
+		time.Sleep(time.Millisecond * 200)
+		response, err = auction.forwardAttempt(ctx, msg)
+	}
+	return response, err
+}
+
+func (auction *AuctionService) forwardAttempt(ctx context.Context, msg *proto.Bid) (*proto.Ack, error) {
 	conn, err := grpc.NewClient(auction.leader.String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, "grpc.NewClient: %s", err.Error())
@@ -215,10 +226,6 @@ func (auction *AuctionService) forwardBid(ctx context.Context, msg *proto.Bid) (
 	forwardingClient := proto.NewAuctionClient(conn)
 	log.Printf("Forwarding bid from #%d\n", msg.BidderId)
 	response, err := forwardingClient.PutBid(ctx, msg)
-	if err != nil {
-		log.Printf("Leader unavailable, proposing election: %v", err)
-		go auction.holdElection()
-	}
 	return response, err
 }
 

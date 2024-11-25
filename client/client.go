@@ -19,31 +19,42 @@ var ctx context.Context = context.Background()
 
 var my_id int64 = 0
 var lot *proto.Lot
+var discovery *proto.Discovery
+
+var conn *grpc.ClientConn
+var client proto.AuctionClient
 
 func main() {
 	fmt.Print("Enter auction IP-address:port and press ENTER: ")
 	addr := nextLine()
 
-	conn := getConnectionToServer(addr)
+	conn = getConnectionToServer(addr)
 	defer conn.Close()
-	client := proto.NewAuctionClient(conn)
+	client = proto.NewAuctionClient(conn)
 
 	getAndShowAuctionDetails(client)
 
-	interactionLoop(client)
+	interactionLoop()
 }
 
 /*
 User-interaction loop. Parses the amount to bid and sends it to the auction.
 */
-func interactionLoop(client proto.AuctionClient) {
+func interactionLoop() {
 	for {
+		var err error
+		discovery, err = client.GetDiscovery(ctx, &proto.Empty{})
+		if err != nil {
+			log.Println(err.Error())
+		}
+
 		fmt.Print("To bid, enter an amount and press ENTER: ")
 		amount, err := strconv.ParseInt(nextLine(), 10, 0)
 		if err != nil {
 			log.Println("*** Unable to parse amount. ***")
 			continue
 		}
+
 		ack, err := client.PutBid(ctx, &proto.Bid{
 			Amount:   amount,
 			BidderId: my_id,
@@ -51,6 +62,15 @@ func interactionLoop(client proto.AuctionClient) {
 
 		if err != nil {
 			log.Println(err.Error())
+			findAlternativeClient()
+			time.Sleep(time.Millisecond * 200)
+			ack, err = client.PutBid(ctx, &proto.Bid{
+				Amount:   amount,
+				BidderId: my_id,
+			})
+		}
+
+		if err != nil {
 			continue
 		}
 
@@ -61,6 +81,20 @@ func interactionLoop(client proto.AuctionClient) {
 
 		displayAcknowledge(ack)
 	}
+}
+
+func findAlternativeClient() {
+	for _, addr := range discovery.Others {
+		conn.Close()
+		conn = getConnectionToServer(addr)
+		client = proto.NewAuctionClient(conn)
+		_, err := client.Ping(ctx, &proto.Empty{})
+		if err == nil {
+			return
+		}
+	}
+
+	panic("No alternative connections found!")
 }
 
 /*
