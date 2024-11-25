@@ -46,7 +46,7 @@ https://github.com/NewNorthStar/BSDISYS1KU-Assignment-Five
 
 \section{Introduction}
 
-We have implemented an auction system consisting of one or more server nodes conducting a single auction. Clients may connect to any node to bid on the auction. 
+We have implemented an auction system consisting of one or more server nodes conducting a single auction. Clients may connect to any node to bid on the auction. The solution is implemented in Go and communicates using gRPC.
 
 \begin{itemize}
     \item The server nodes act as a single leader system. Followers will forward new bids to the leader. The leader then updates any followers before the method returns. This ensures linearizable state changes as long as the auction is live with atleast one node. 
@@ -56,10 +56,38 @@ We have implemented an auction system consisting of one or more server nodes con
 
 \section{Architecture}
 
+Clients place bids at the auction using the \texttt{PutBid(...)} rpc. This may be called on any node. If a follower node receives this call, it will forward the call to the leader using a client instance. This is also when a follower may detect the failure of the leader. 
+
+\bigbreak
+
+The \texttt{GetLot(...)}, \texttt{GetAuctionStatus(...)} and \texttt{GetDiscovery(...)} rpc's are used to pull information from the auction. These are for use by clients, but follower nodes also use them when registering with the leader. 
+
+\bigbreak
+
+\texttt{Ping(...)} is used by clients to find a new connection to the auction, should the first one fail. 
+
+\bigbreak
+
+\texttt{Register(...)} is used by follower nodes to register with the leader. The successful connection is confirmed by the leader by sending the first \texttt{UpdateNode} call. 
+
+\bigbreak
+
+\texttt{UpdateNode(...)} is used by the leader to push auction state changes to to followers. This is called as a side-effect of the \texttt{PutBid} and \texttt{Register} rpc calls. 
+
+\bigbreak
+
+Should the leader node fail, then the \texttt{Election(...)} and \texttt{Coordinator(...)} calls are used to elevate a follower to lead the auction. 
+
+\pagebreak
+
 \section{Correctness}
 
 \subsection{Argument 1}
 
+\textit{Argue whether your implementation satisfies linearisability or sequential consistency. In order to do so, first, you must state precisely what such property is.}
+
 \subsection{Argument 2}
+
+\textit{An argument that your protocol is correct in the absence and the presence of failures.}
 
 \end{document}
