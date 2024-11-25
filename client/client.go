@@ -90,6 +90,9 @@ func interactionLoop() {
 	}
 }
 
+/*
+Attempts to switch the client for another which is available. Panics if unable to reconnect to auction.
+*/
 func findAlternativeClient() {
 	for _, addr := range discovery.Others {
 		conn.Close()
