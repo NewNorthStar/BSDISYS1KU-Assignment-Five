@@ -1,0 +1,47 @@
+\documentclass[a4paper,11pt]{article}
+
+% Import packages
+\usepackage[a4paper]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{pgf-umlsd}
+\usepackage{listings}
+
+% Allows the system logs to be shown verbatim with line wrapping.
+% https://tex.stackexchange.com/questions/144979/wrap-lines-in-verbatim#:~:text=One%20way%20would%20be%20to%20add%20the%20listings,breaklines%3Dtrue%20to%20the%20package%20options%2C%20or%20to%20lstset.
+\lstset{
+basicstyle=\small\ttfamily,
+columns=flexible,
+breaklines=true
+}
+
+% based on \newthread macro from pgf-umlsd.sty
+% add fourth argument (third mandatory) that defines the xshift of a thread.
+% that argument gets passed to \newinst, which has an optional
+% argument that defines the shift
+\newcommand{\newthreadShift}[4][gray!30]{
+  \newinst[#4]{#2}{#3}
+  \stepcounter{threadnum}
+  \node[below of=inst\theinstnum,node distance=0.8cm] (thread\thethreadnum) {};
+  \tikzstyle{threadcolor\thethreadnum}=[fill=#1]
+  \tikzstyle{instcolor#2}=[fill=#1]
+}
+
+% Set title, author name and date
+\title{Distributed Auction System - Report}
+\author{rono, ghej, luvr @ ITU, Group ``G.L.R''}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\pagebreak
+
+\section{Link to Project on GitHub}
+https://github.com/NewNorthStar/BSDISYS1KU-Assignment-Five
+
+\end{document}
