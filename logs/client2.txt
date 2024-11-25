@@ -1,0 +1,27 @@
+PS go\src\BSDISYS1KU-Assignment-Five\client> go run . localhost:5052
+The item up for auction is 'Course Book'.
+Price currently 0,- from bidder #0
+The auction closes at 2024-11-25 18:39:10.5939688 +0100 CET
+The starting bid is 40,-
+The auction is in progress.
+To bid, enter an amount and press ENTER: 50
+You are bidder #2
+Your bid has been accepted. The price is now 50,-
+To bid, enter an amount and press ENTER: 70
+Your bid has been accepted. The price is now 70,-
+To bid, enter an amount and press ENTER: 80
+2024/11/25 18:35:28 rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp [::1]:5052: connectex: Der kunne ikke oprettes forbindelse, fordi destinationscomputeren aktivt nægtede det."
+Your bid has been accepted. The price is now 80,-
+To bid, enter an amount and press ENTER: 100
+Your bid has been accepted. The price is now 100,-
+To bid, enter an amount and press ENTER: 120
+Your bid has been accepted. The price is now 120,-
+To bid, enter an amount and press ENTER: 130
+Your bid has been REJECTED as too low. The current top bid is 130,-
+To bid, enter an amount and press ENTER: 140
+Your bid has been accepted. The price is now 140,-
+To bid, enter an amount and press ENTER: 140
+The auction has closed and the item has been sold to bidder #2 for 140,-
+You won the auction!
+To bid, enter an amount and press ENTER: 2024/11/25 18:39:29 *** Unable to parse amount. ***
+exit status 0xc000013a

@@ -1,4 +1,10 @@
 # Distributed Auction System
+Assignment hand in for "Distributed Systems, BSc (Autumn 2024) / Mandatory Activity 5" 
+
+## Authors
+- ghej@itu.dk
+- rono@itu.dk
+- luvr@itu.dk
 
 ## Service Functional Requirements
 
@@ -21,7 +27,32 @@
 ## Client Functional Requirements
 
 - Clients bid on the auction. 
-- Clients want to poll the state of the auction at times. 
+- Clients want to pull the state of the auction at times. 
 - Clients have an ID which is consistent through the duration of the auction, even if they are not in permanent contact with the auction service. 
 - Clients bid up the item as the auction progresses. 
 - Clients discover front-end services for the auction through the discovery service provided. Should a front-end node fail, then it will try to use one of the other known front-ends. 
+
+## How to Run
+
+To run a leader node:
+1. In a CLI, enter the `server` directory.
+2. call `go run . <your-address>`
+
+To run a follower node:
+1. In a CLI, enter the `server` directory.
+2. call `go run . <your-address> <leader-node-address>`
+
+To run a client:
+1. In a CLI, enter the `client` directory.
+2. call `go run . <server-node-address>`. This address can either be that of a follower, or leader node.
+3. Enter an integer to place a bid.
+
+### Example:
+Terminal 1:
+`.../BSDISYS1KU-ASSIGNMENT-FIVE/server go run localhost:5050`
+
+Terminal 2:
+`.../BSDISYS1KU-ASSIGNMENT-FIVE/server go run localhost:5051 localhost:5050` 
+
+Terminal 3:
+`.../BSDISYS1KU-ASSIGNMENT-FIVE/client go run localhost:5050`

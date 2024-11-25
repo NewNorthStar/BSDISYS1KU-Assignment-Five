@@ -64,7 +64,7 @@ Write a 2-page report (if necessary you can go up to 3 pages) containing the fol
 
 ## SUMMARY of what to submit on learnit
 
-- a link to a GitHub repo containing the code (please make sure the repo is public so that we can easily access it. Alternatively, you can submit a .zip file in learnit.
+- a link to a GitHub repo containing the code. Please make sure the repo is public so that we can easily access it. Alternatively, you can submit a .zip file in learnit.
 
 - A file report.pdf containing a report (in PDF) with your answers; the file can be **at most** 3 A4 pages (it can be less), font cannot be smaller than 9pt.
 

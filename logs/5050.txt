@@ -1,0 +1,29 @@
+PS go\src\BSDISYS1KU-Assignment-Five\server> go run . localhost:5050
+2024/11/25 18:34:10 Starting a new auction...
+2024/11/25 18:34:10 Now ready at 127.0.0.1:5050
+2024/11/25 18:34:23 New follower node: 127.0.0.1:5051
+2024/11/25 18:34:23 Successful first update on follower node: 127.0.0.1:5051
+2024/11/25 18:34:35 New follower node: 127.0.0.1:5052
+2024/11/25 18:34:35 Successful first update on follower node: 127.0.0.1:5052
+2024/11/25 18:34:58 PutBid op#1: Bid now at 40,- held by bidder #1
+2024/11/25 18:35:02 PutBid op#2: Bid now at 50,- held by bidder #2
+2024/11/25 18:35:07 PutBid op#3: Bid now at 60,- held by bidder #1
+2024/11/25 18:35:13 PutBid op#4: Bid now at 70,- held by bidder #2
+2024/11/25 18:35:29 PutBid op#5: Bid now at 80,- held by bidder #2
+2024/11/25 18:35:36 PutBid op#6: Bid now at 90,- held by bidder #1
+2024/11/25 18:35:39 PutBid op#7: Bid now at 100,- held by bidder #2
+exit status 0xc000013a
+PS go\src\BSDISYS1KU-Assignment-Five\server> go run . localhost:5050 127.0.0.1:5051
+2024/11/25 18:36:40 Connecting to existing auction...
+2024/11/25 18:36:40 Registered as follower with 127.0.0.1:5051. Now awaiting first update...
+2024/11/25 18:36:40 Now ready at 127.0.0.1:5050
+2024/11/25 18:36:40 Received update from 127.0.0.1:5051
+2024/11/25 18:36:40 PutBid op#9: Bid now at 120,- held by bidder #2
+2024/11/25 18:36:40 Received update from 127.0.0.1:5051
+2024/11/25 18:36:40 PutBid op#9: Bid now at 120,- held by bidder #2
+2024/11/25 18:36:56 Received update from 127.0.0.1:5051
+2024/11/25 18:36:56 PutBid op#10: Bid now at 130,- held by bidder #1
+2024/11/25 18:37:07 Received update from 127.0.0.1:5051
+2024/11/25 18:37:07 PutBid op#11: Bid now at 140,- held by bidder #2
+2024/11/25 18:39:12 Auction was closed at 2024-11-25 18:39:10.5939688 +0100 CET
+2024/11/25 18:39:12 The item 'Course Book' was sold to bidder #2 for 140,-

@@ -1,0 +1,23 @@
+PS go\src\BSDISYS1KU-Assignment-Five\server> go run . localhost:5052 127.0.0.1:5050
+2024/11/25 18:34:35 Connecting to existing auction...
+2024/11/25 18:34:35 Registered as follower with 127.0.0.1:5050. Now awaiting first update...
+2024/11/25 18:34:35 Now ready at 127.0.0.1:5052
+2024/11/25 18:34:35 Received update from 127.0.0.1:5050
+2024/11/25 18:34:35 PutBid op#0: Bid now at 0,- held by bidder #0
+2024/11/25 18:34:35 Received update from 127.0.0.1:5050
+2024/11/25 18:34:35 PutBid op#0: Bid now at 0,- held by bidder #0
+2024/11/25 18:34:58 Received update from 127.0.0.1:5050
+2024/11/25 18:34:58 PutBid op#1: Bid now at 40,- held by bidder #1
+2024/11/25 18:35:02 Forwarding bid from #0
+2024/11/25 18:35:02 Received update from 127.0.0.1:5050
+2024/11/25 18:35:02 PutBid op#2: Bid now at 50,- held by bidder #2
+2024/11/25 18:35:07 Received update from 127.0.0.1:5050
+2024/11/25 18:35:07 PutBid op#3: Bid now at 60,- held by bidder #1
+2024/11/25 18:35:13 Forwarding bid from #2
+2024/11/25 18:35:13 Received update from 127.0.0.1:5050
+2024/11/25 18:35:13 PutBid op#4: Bid now at 70,- held by bidder #2
+exit status 0xc000013a
+PS go\src\BSDISYS1KU-Assignment-Five\server> go run . localhost:5052 127.0.0.1:5050
+2024/11/25 18:39:01 Connecting to existing auction...
+2024/11/25 18:39:01 Unable to register: rpc error: code = PermissionDenied desc = Followers must register with the leader: 127.0.0.1:5051
+exit status 1

@@ -1,9 +1,11 @@
 syntax = "proto3";
 option go_package = "example.com/auction/grpc/proto";
 
+import "google/protobuf/timestamp.proto";
+
 // API available at a front-end providing node. Should have discovery capabilities. 
-service AuctionFrontEnd {
-    // Place a bid on the auction. Returns acknowledgement showing outcome of the bid.
+service Auction {
+    // Forward a bid to the auction. Returns acknowledgement showing outcome of the bid.
     rpc PutBid(Bid) returns (Ack);  
 
     // Get the status of the auction. Returns acknowledgement showing the current auction state. 
@@ -14,26 +16,42 @@ service AuctionFrontEnd {
 
     // Discover front-end service nodes for keeping contact with the auction. Returns discovery of node IP addresses.
     rpc GetDiscovery(Empty) returns (Discovery);
+
+    // Updates a follower node. The follower returns a confirmation when this has happened.
+    rpc UpdateNode(NodeState) returns (Empty);
+
+    // Register a follower node. If the leader is able to accept this, it will return a Lot message.
+    rpc Register(Node) returns (Lot);
+
+    // Ping a node to see that it is still active. 
+    rpc Ping(Empty) returns (Empty);
+
+    // Call an election to elect a leader.
+    rpc Election(ElectionBallot) returns (ElectionAnswer);
+
+    // Declare yourself as the new leader.
+    rpc Coordinator(ElectionBallot) returns (Empty);
 }
 
-// API at the back-end. Should have election, failover and replication capabilities. 
-service Auction {
-    // Forward a bid to the auction. Returns acknowledgement showing outcome of the bid.
-    rpc PutBid(Bid) returns (Ack);  
-
-    // Get the status of the auction. Returns acknowledgement showing the current auction state. 
-    rpc GetAuctionStatus(Empty) returns (Ack);
-
-    // Get details on the item up for auction. Returns lot message with details. 
-    rpc GetLot(Empty) returns (Lot);
+message Node {
+    string addr = 1;
 }
 
-message Lot{
+message NodeState {
+    Bid top_bid = 1;
+    int64 bid_time = 2;
+    int64 bidders = 3;
+    string addr = 4;
+    optional Discovery discovery = 5;
+}
+
+message Lot {
     int64 id = 1;
     string name = 2;
     int64 asking_price = 3;
     int64 starting_bid = 4;
     int64 current_bid = 5;
+    google.protobuf.Timestamp closing_time = 6;
 }
 
 message Bid {
@@ -45,8 +63,11 @@ enum StatusValue {
     FAULT = 0;
     ACCEPTED = 1;
     UNDERBID = 2;
-    SOLD = 3;
+    NOT_STARTED = 3;
     IN_PROGRESS = 4;
+    SOLD = 5;
+    CLOSED = 6;
+    REJECTED = 7;
 }
 
 message Ack {
@@ -56,7 +77,17 @@ message Ack {
 }
 
 message Discovery {
-    repeated string ip_addresses = 1;
+    repeated string others = 1;
+    string leader = 2;
 }
 
-message Empty{}
+message ElectionBallot {
+    int64 bid_time = 1;
+    string addr = 2;
+}
+
+message ElectionAnswer {
+    StatusValue result = 1;
+}
+
+message Empty {}

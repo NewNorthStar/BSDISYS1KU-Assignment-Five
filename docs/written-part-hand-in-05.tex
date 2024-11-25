@@ -1,0 +1,125 @@
+\documentclass[a4paper,11pt]{article}
+
+% Import packages
+\usepackage[a4paper]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{pgf-umlsd}
+\usepackage{listings}
+
+% Allows the system logs to be shown verbatim with line wrapping.
+% https://tex.stackexchange.com/questions/144979/wrap-lines-in-verbatim#:~:text=One%20way%20would%20be%20to%20add%20the%20listings,breaklines%3Dtrue%20to%20the%20package%20options%2C%20or%20to%20lstset.
+\lstset{
+basicstyle=\small\ttfamily,
+columns=flexible,
+breaklines=true
+}
+
+% based on \newthread macro from pgf-umlsd.sty
+% add fourth argument (third mandatory) that defines the xshift of a thread.
+% that argument gets passed to \newinst, which has an optional
+% argument that defines the shift
+\newcommand{\newthreadShift}[4][gray!30]{
+  \newinst[#4]{#2}{#3}
+  \stepcounter{threadnum}
+  \node[below of=inst\theinstnum,node distance=0.8cm] (thread\thethreadnum) {};
+  \tikzstyle{threadcolor\thethreadnum}=[fill=#1]
+  \tikzstyle{instcolor#2}=[fill=#1]
+}
+
+% Set title, author name and date
+\title{Distributed Auction System - Report}
+\author{rono, ghej, luvr @ ITU, Group ``G.L.R''}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\pagebreak
+
+\section{Link to Project on GitHub}
+https://github.com/NewNorthStar/BSDISYS1KU-Assignment-Five
+
+\section{Introduction}
+
+We have implemented an auction system consisting of one or more server nodes conducting a single auction. Clients may connect to any node to bid on the auction. The solution is implemented in Go and communicates using gRPC.
+
+\begin{itemize}
+    \item The server nodes act as a single leader system. Followers will forward new bids to the leader. The leader then updates any followers before the method returns. This ensures linearizable state changes as long as the auction is live with atleast one node. 
+    \item When a follower discovers that the leader is unreachable, it will call for an election. This is implemented using the Bully election algorithm, with priority in particular given to the most up-to-date node.
+    \item If a client loses connection to the auction, it will try reconnecting to another known node. Clients know the nodes available their registration, or at their last bid. 
+\end{itemize}
+
+\section{Architecture}
+
+Clients place bids at the auction using the \texttt{PutBid(...)} rpc. This may be called on any node. If a follower node receives this call, it will forward the call to the leader using a client instance. This is also when a follower may detect the failure of the leader. 
+
+\bigbreak
+
+The \texttt{GetLot(...)}, \texttt{GetAuctionStatus(...)} and \texttt{GetDiscovery(...)} rpc's are used to pull information from the auction. These are for use by clients, but follower nodes also use them when registering with the leader. 
+
+\bigbreak
+
+\texttt{Ping(...)} is used by clients to find a new connection to the auction, should the first one fail. 
+
+\bigbreak
+
+\texttt{Register(...)} is used by follower nodes to register with the leader. The successful connection is confirmed by the leader by sending the first \texttt{UpdateNode} call. 
+
+\bigbreak
+
+\texttt{UpdateNode(...)} is used by the leader to push auction state changes to to followers. This is called as a side-effect of the \texttt{PutBid} and \texttt{Register} rpc calls. 
+
+\bigbreak
+
+Should the leader node fail, then the \texttt{Election(...)} and \texttt{Coordinator(...)} calls are used to elevate a follower to lead the auction. 
+
+\pagebreak
+
+\section{Correctness}
+
+\subsection{Argument 1}
+
+\textit{Argue whether your implementation satisfies linearisability or sequential consistency. In order to do so, first, you must state precisely what such property is.}
+
+\bigbreak
+
+We have implemented single-leader synchronous replication. In order to have a fair auction, we decided that the placement of bids should satisfy linearisability. That is:
+
+\begin{enumerate}
+    \item The leader is at all times the single correct copy of the auction. Followers only provide standby redundancy and bid forwarding. 
+    \item The interleaving of bids is consistent with who is first able to secure the critical section with the leader in real time. 
+\end{enumerate}
+
+\noindent However:
+
+\begin{enumerate}
+    \item Other calls such as \texttt{GetLot}, \texttt{GetAuctionStatus} and \texttt{GetDiscovery} are more leniently implemented. Followers are allowed to resolve these calls with their current information. 
+    \item We have not locked \texttt{PutBid} for other followers during the election. This potentially allows another bid to sneak in front of the election triggering bid. This could perhaps be resolved with a mutual exclusion algorithm as seen in hand-in 4 with additional timestamps. 
+\end{enumerate}
+
+\subsection{Argument 2}
+
+\textit{An argument that your protocol is correct in the absence and the presence of failures.}
+
+\bigbreak
+
+Given reliable message transport, the system will work consistently through the failure of any replica but one. 
+
+\bigbreak
+
+The leader maintains a timestamp that increments with each bid processed. This is part of the \texttt{UpdateNode} call made to follower nodes. When \texttt{PutBid} returns for a client, the new bid will have been replicated across all reachable non-failed followers. We know of one current limitation in our solution: Should the leader fail during a synchronous replication, the bid may persist after an election at other nodes. In this case the client will retry placing the bid with a follower node, and will then receive the correct reply after an election. 
+
+\bigbreak
+
+A Follower will trigger an election if the leader fails to process a forwarded bid. Elections are held using the Bully algorithm, with followers multi-casting their current stats. The node with the highest bidding timestamp takes priority. The election outcome elevates one of the followers to be leader, unseating any existing leader. 
+
+\bigbreak
+
+Assuming that leaders fail cleanly, it is not possible to reconnect to the auction service as a leader. Nodes can only register with the auction leader as followers. Without clean failures we would have to implement additional measures to avoid split-brain scenarios. 
+
+\end{document}
