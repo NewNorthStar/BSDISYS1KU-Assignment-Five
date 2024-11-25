@@ -540,6 +540,10 @@ func (auction *AuctionService) UpdateNode(ctx context.Context, msg *proto.NodeSt
 	if auction.isLeader() {
 		return nil, status.Errorf(codes.PermissionDenied, "This node is leading the auction")
 	}
+	if auction.bid_time > msg.BidTime {
+		log.Printf("Received an out-of-date update")
+		return &proto.Empty{}, nil
+	}
 
 	auction.bid_lock.Lock()
 	defer auction.bid_lock.Unlock()
