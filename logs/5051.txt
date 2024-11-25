@@ -1,0 +1,45 @@
+PS go\src\BSDISYS1KU-Assignment-Five\server> go run . localhost:5051 127.0.0.1:5050
+2024/11/25 18:34:23 Connecting to existing auction...
+2024/11/25 18:34:23 Registered as follower with 127.0.0.1:5050. Now awaiting first update...
+2024/11/25 18:34:23 Now ready at 127.0.0.1:5051
+2024/11/25 18:34:23 Received update from 127.0.0.1:5050
+2024/11/25 18:34:23 PutBid op#0: Bid now at 0,- held by bidder #0
+2024/11/25 18:34:23 Received update from 127.0.0.1:5050
+2024/11/25 18:34:23 PutBid op#0: Bid now at 0,- held by bidder #0
+2024/11/25 18:34:35 Received update from 127.0.0.1:5050
+2024/11/25 18:34:35 PutBid op#0: Bid now at 0,- held by bidder #0
+2024/11/25 18:34:58 Received update from 127.0.0.1:5050
+2024/11/25 18:34:58 PutBid op#1: Bid now at 40,- held by bidder #1
+2024/11/25 18:35:02 Received update from 127.0.0.1:5050
+2024/11/25 18:35:02 PutBid op#2: Bid now at 50,- held by bidder #2
+2024/11/25 18:35:07 Received update from 127.0.0.1:5050
+2024/11/25 18:35:07 PutBid op#3: Bid now at 60,- held by bidder #1
+2024/11/25 18:35:13 Received update from 127.0.0.1:5050
+2024/11/25 18:35:13 PutBid op#4: Bid now at 70,- held by bidder #2
+2024/11/25 18:35:29 Forwarding bid from #2
+2024/11/25 18:35:29 Received update from 127.0.0.1:5050
+2024/11/25 18:35:29 PutBid op#5: Bid now at 80,- held by bidder #2
+2024/11/25 18:35:36 Received update from 127.0.0.1:5050
+2024/11/25 18:35:36 PutBid op#6: Bid now at 90,- held by bidder #1
+2024/11/25 18:35:39 Forwarding bid from #2
+2024/11/25 18:35:39 Received update from 127.0.0.1:5050
+2024/11/25 18:35:39 PutBid op#7: Bid now at 100,- held by bidder #2
+2024/11/25 18:36:00 Forwarding bid from #1
+2024/11/25 18:36:00 Leader unavailable, proposing election: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp 127.0.0.1:5050: connectex: Der kunne ikke oprettes forbindelse, fordi destinationscomputeren aktivt nægtede det."
+2024/11/25 18:36:00 Election triggered...
+2024/11/25 18:36:00 Error from addr 127.0.0.1:5052: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp 127.0.0.1:5052: connectex: Der kunne ikke oprettes forbindelse, fordi destinationscomputeren aktivt nægtede det."
+2024/11/25 18:36:00 Error from addr 127.0.0.1:5050: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp 127.0.0.1:5050: connectex: Der kunne ikke oprettes forbindelse, fordi destinationscomputeren aktivt nægtede det."
+2024/11/25 18:36:00 Won the election!
+2024/11/25 18:36:00 Error from addr 127.0.0.1:5052: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp 127.0.0.1:5052: connectex: Der kunne ikke oprettes forbindelse, fordi destinationscomputeren aktivt nægtede det."
+2024/11/25 18:36:00 Error from addr 127.0.0.1:5050: rpc error: code = Unavailable desc = connection error: desc = "transport: Error while dialing: dial tcp 127.0.0.1:5050: connectex: Der kunne ikke oprettes forbindelse, fordi destinationscomputeren aktivt nægtede det."
+2024/11/25 18:36:01 Forwarding bid from #1
+2024/11/25 18:36:01 PutBid op#8: Bid now at 110,- held by bidder #1
+2024/11/25 18:36:07 PutBid op#9: Bid now at 120,- held by bidder #2
+2024/11/25 18:36:40 New follower node: 127.0.0.1:5050
+2024/11/25 18:36:40 Successful first update on follower node: 127.0.0.1:5050
+2024/11/25 18:36:56 PutBid op#10: Bid now at 130,- held by bidder #1
+2024/11/25 18:36:58 PutBid op#10: Bid now at 130,- held by bidder #1
+2024/11/25 18:37:03 PutBid op#10: Bid now at 130,- held by bidder #1
+2024/11/25 18:37:07 PutBid op#11: Bid now at 140,- held by bidder #2
+2024/11/25 18:39:11 Auction was closed at 2024-11-25 18:39:10.5939688 +0100 CET
+2024/11/25 18:39:11 The item 'Course Book' was sold to bidder #2 for 140,-
