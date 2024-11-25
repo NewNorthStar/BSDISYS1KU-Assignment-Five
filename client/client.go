@@ -25,8 +25,15 @@ var conn *grpc.ClientConn
 var client proto.AuctionClient
 
 func main() {
-	fmt.Print("Enter auction IP-address:port and press ENTER: ")
-	addr := nextLine()
+	var addr string
+	if len(os.Args) == 1 {
+		fmt.Print("Enter auction IP-address:port and press ENTER: ")
+		addr = nextLine()
+	} else if len(os.Args) == 2 {
+		addr = os.Args[1]
+	} else {
+		log.Fatalln("*** Incorrect args ***")
+	}
 
 	conn = getConnectionToServer(addr)
 	defer conn.Close()
